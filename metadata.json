@@ -1,0 +1,5 @@
+{
+  "name": "교과세특 생성 비서 with JK",
+  "description": "교사의 관점에서 학생의 보고서와 코드를 분석하여 생활기록부 교과세특을 자동으로 작성해주는 인공지능 도구입니다.",
+  "requestFramePermissions": []
+}
