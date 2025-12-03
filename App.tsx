@@ -158,7 +158,7 @@ const App: React.FC = () => {
                   교과세특 도우미
                 </h1>
                 <p className="text-xs text-slate-600 font-medium mt-1 bg-yellow-100 px-2 py-0.5 rounded-sm inline-block">
-                  정보교과 세특 도우미 made by JK
+                  정보교과 세특 도우미 made by jook
                 </p>
               </div>
             </div>
