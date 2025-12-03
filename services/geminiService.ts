@@ -86,26 +86,25 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
     });
   });
 
-  // Determine Character Limit Strategy with Aggressive Safety Buffer
-  // We explicitly tell the AI a lower target to ensure it doesn't overflow.
-  let targetChars = 600;
+  // Determine Character Limit Strategy
+  let limitChars = 650;
   let strictLimitMsg = "";
 
   switch (params.gradeLevel) {
-    case GradeLevel.GRADE_1: // Limit 750 -> Target 650
-      targetChars = 650;
-      strictLimitMsg = "🚨 절대 규칙: 공백 포함 750자를 절대 넘기면 안 됨. 목표: 600~680자.";
+    case GradeLevel.GRADE_1: // Limit 650
+      limitChars = 650;
+      strictLimitMsg = `🚨 절대 규칙: 공백 포함 ${limitChars}자를 절대 넘기면 안 됨.`;
       break;
-    case GradeLevel.GRADE_2: // Limit 650 -> Target 550
-      targetChars = 550;
-      strictLimitMsg = "🚨 절대 규칙: 공백 포함 650자를 절대 넘기면 안 됨. 목표: 500~580자.";
+    case GradeLevel.GRADE_2: // Limit 550
+      limitChars = 550;
+      strictLimitMsg = `🚨 절대 규칙: 공백 포함 ${limitChars}자를 절대 넘기면 안 됨.`;
       break;
-    case GradeLevel.GRADE_3: // Limit 550 -> Target 450
-      targetChars = 450;
-      strictLimitMsg = "🚨 절대 규칙: 공백 포함 550자를 절대 넘기면 안 됨. 목표: 400~480자.";
+    case GradeLevel.GRADE_3: // Limit 450
+      limitChars = 450;
+      strictLimitMsg = `🚨 절대 규칙: 공백 포함 ${limitChars}자를 절대 넘기면 안 됨.`;
       break;
     default:
-      targetChars = 600;
+      limitChars = 650;
       strictLimitMsg = "적절한 분량으로 작성하시오.";
   }
 
@@ -120,10 +119,12 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
     텍스트를 생성하기 직전에 다음 규칙을 적용하여 스스로 내용을 수정하시오:
     1. ❌ **이름 및 지칭 삭제**: 텍스트에 학생 이름(예: 홍길동)이 포함되어 있다면 무조건 삭제하시오. **'위 학생은', '해당 학생은', '학습자는', '학생은' 등의 표현도 절대 남기지 마시오.** (주어 생략 권장)
     2. ❌ **성취기준 코드 삭제**: 텍스트에 [12정01-01] 같은 코드가 있다면 무조건 삭제하시오.
-    3. ❌ **글자 수 강제 조절**: 
+    3. ❌ **괄호() 사용 금지**: 텍스트에 괄호 '()'가 있다면 무조건 삭제하거나 다른 표현으로 바꾸시오. 예를 들어 '딕셔너리(item)'는 '딕셔너리 item'으로 변경하시오.
+    4. ❌ **따옴표 사용 최소화**: 작은따옴표나 큰따옴표는 교과명, 프로젝트명 등 특별한 경우에만 사용하고, 그 외에는 사용하지 마시오.
+    5. ❌ **글자 수 강제 조절**: 
        👉 ${strictLimitMsg}
        (만약 생성된 텍스트가 이 제한을 넘을 것 같으면, 부사나 형용사를 과감히 삭제하여 길이를 줄이시오. 내용이 잘리더라도 제한을 지키는 것이 우선입니다.)
-    4. ❌ **섹션 헤더 삭제**: '탐구 동기', '탐구 과정', '탐구 결과', '평가 및 피드백' 등의 단어가 포함되어 있다면 삭제하고 자연스러운 줄글로 이으시오.
+    6. ❌ **섹션 헤더 삭제**: '탐구 동기', '탐구 과정', '탐구 결과', '평가 및 피드백' 등의 단어가 포함되어 있다면 삭제하고 자연스러운 줄글로 이으시오.
     
     위 규칙을 완벽히 지킨 최종 결과만 JSON으로 출력하시오.
   `;
@@ -139,13 +140,9 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            standard: { type: Type.STRING, description: "약 700자 내외의 표준 분량 버전" },
-            gradeVersion: { type: Type.STRING, description: `공백 포함 ${targetChars}자 내외로 작성된 버전 (학생 이름, 성취기준 번호, 섹션 헤더 절대 미포함)` },
-            summary500: { type: Type.STRING, description: "500자 요약 버전" },
-            summary300: { type: Type.STRING, description: "300자 요약 버전" },
-            summary150: { type: Type.STRING, description: "150자 요약 버전" },
+            gradeVersion: { type: Type.STRING, description: `공백 포함 ${limitChars}자 이하(절대 넘지 말 것)로 작성된 버전 (학생 이름, 성취기준 번호, 섹션 헤더, 괄호, 불필요한 따옴표 절대 미포함)` },
           },
-          required: ["standard", "gradeVersion", "summary500", "summary300", "summary150"],
+          required: ["gradeVersion"],
         }
       },
       contents: [

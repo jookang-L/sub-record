@@ -12,11 +12,10 @@ export interface UploadedFile {
 }
 
 export interface GeneratedResult {
-  standard: string;
   gradeVersion: string;
-  summary500: string;
-  summary300: string;
-  summary150: string;
+  summary500?: string;
+  summary300?: string;
+  summary150?: string;
 }
 
 export interface GenerationParams {
