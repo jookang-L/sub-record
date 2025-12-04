@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { GenerationParams, GeneratedResult, GradeLevel } from "../types";
-import { SYSTEM_INSTRUCTION } from "../constants";
+import { getSystemInstruction } from "../constants";
 import { CURRICULUM_AI_BASICS, CURRICULUM_INFORMATICS, STUDENT_RECORD_EXAMPLES } from "../referenceData";
 
 // Helper to sanitize base64 strings (remove data URL prefix if present)
@@ -24,28 +24,16 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
 
   // 1. Inject Knowledge Base
   if (params.customKnowledgeBase) {
-    if (params.customKnowledgeBase.mimeType === 'application/pdf') {
-      parts.push({
-        text: `[지식 베이스: 사용자 정의 참조 자료 (PDF)]\n작성 시 다음 PDF 파일의 내용을 반드시 참고하시오.`
-      });
-      parts.push({
-        inlineData: {
-          mimeType: params.customKnowledgeBase.mimeType,
-          data: getBase64Data(params.customKnowledgeBase.data)
-        }
-      });
-    } else {
-      parts.push({
-        text: `
-        [지식 베이스: 사용자 정의 참조 자료]
-        작성 시 다음의 내용을 반드시 참고하시오.
-        단, **성취기준 번호(예: [12정02-04])는 절대 출력물에 포함하지 마십시오.** 내용은 녹여내되 코드는 표기하지 마십시오.
-        이 데이터베이스에 있는 문체와 평가 방식(구체적 알고리즘 명시, 데이터 출처 언급, 문제해결 과정 서술 등)을 철저히 벤치마킹하여 작성할 것.
-        
-        ${params.customKnowledgeBase.data}
-        `
-      });
-    }
+    // Only PDF files are supported for custom knowledge base
+    parts.push({
+      text: `[지식 베이스: 사용자 정의 참조 자료 (PDF)]\n작성 시 다음 PDF 파일의 내용을 반드시 참고하시오.`
+    });
+    parts.push({
+      inlineData: {
+        mimeType: params.customKnowledgeBase.mimeType,
+        data: getBase64Data(params.customKnowledgeBase.data)
+      }
+    });
   } else {
     parts.push({
       text: `
@@ -132,10 +120,13 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
   parts.push({ text: promptText });
 
   try {
+    // Determine subject name: use custom subject name if provided, otherwise default to "정보"
+    const subjectName = params.customSubjectName || "정보";
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: getSystemInstruction(subjectName),
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,

@@ -27,4 +27,5 @@ export interface GenerationParams {
     data: string;
     mimeType: string;
   };
+  customSubjectName?: string;
 }
