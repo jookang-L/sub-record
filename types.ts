@@ -4,6 +4,11 @@ export enum GradeLevel {
   GRADE_3 = '3등급',
 }
 
+export enum RecordType {
+  AUTONOMY = '자율',
+  CAREER = '진로',
+}
+
 export interface UploadedFile {
   name: string;
   type: string;
@@ -28,4 +33,5 @@ export interface GenerationParams {
     mimeType: string;
   };
   customSubjectName?: string;
+  recordType?: RecordType;
 }

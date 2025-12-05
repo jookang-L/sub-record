@@ -1,7 +1,8 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { GenerationParams, GeneratedResult, GradeLevel } from "../types";
+import { GenerationParams, GeneratedResult, GradeLevel, RecordType } from "../types";
 import { getSystemInstruction } from "../constants";
+import { getAutonomySystemInstruction } from "../autonomyConstants";
 import { CURRICULUM_AI_BASICS, CURRICULUM_INFORMATICS, STUDENT_RECORD_EXAMPLES } from "../referenceData";
 
 // Helper to sanitize base64 strings (remove data URL prefix if present)
@@ -26,7 +27,7 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
   if (params.customKnowledgeBase) {
     // Only PDF files are supported for custom knowledge base
     parts.push({
-      text: `[지식 베이스: 사용자 정의 참조 자료 (PDF)]\n작성 시 다음 PDF 파일의 내용을 반드시 참고하시오.`
+      text: `[지식 베이스: 사용자 정의 참조 자료 (PDF)]\\n작성 시 다음 PDF 파일의 내용을 반드시 참고하시오.`
     });
     parts.push({
       inlineData: {
@@ -34,7 +35,49 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
         data: getBase64Data(params.customKnowledgeBase.data)
       }
     });
+  } else if (params.recordType) {
+    // For autonomy/career pages, load ALL default PDFs from public folder
+    const pdfFiles = [
+      '자율 (1).pdf',
+      '자율 (2).pdf',
+      '진로 (1).pdf',
+      '진로 (2).pdf',
+      '진로 (3).pdf',
+      '진로 (4).pdf'
+    ];
+
+    parts.push({
+      text: `[지식 베이스: 기본 참조 자료 (${params.recordType} 활동)]\\n작성 시 다음 PDF 파일들의 내용과 문체를 반드시 참고하시오.`
+    });
+
+    // Load each PDF file from public folder
+    for (const pdfFile of pdfFiles) {
+      try {
+        const response = await fetch(`/public/${pdfFile}`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const dataUrl = reader.result as string;
+              resolve(getBase64Data(dataUrl));
+            };
+            reader.readAsDataURL(blob);
+          });
+
+          parts.push({
+            inlineData: {
+              mimeType: 'application/pdf',
+              data: base64
+            }
+          });
+        }
+      } catch (error) {
+        console.warn(`Failed to load ${pdfFile}:`, error);
+      }
+    }
   } else {
+    // Default for subject pages (교과세특)
     parts.push({
       text: `
       [지식 베이스: 고정 참조 자료]
@@ -74,27 +117,45 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
     });
   });
 
-  // Determine Character Limit Strategy
+  // Determine Character Limit Strategy based on recordType
   let limitChars = 650;
   let strictLimitMsg = "";
 
-  switch (params.gradeLevel) {
-    case GradeLevel.GRADE_1: // Limit 650
-      limitChars = 650;
-      strictLimitMsg = `🚨 절대 규칙: 공백 포함 ${limitChars}자를 절대 넘기면 안 됨.`;
-      break;
-    case GradeLevel.GRADE_2: // Limit 550
-      limitChars = 550;
-      strictLimitMsg = `🚨 절대 규칙: 공백 포함 ${limitChars}자를 절대 넘기면 안 됨.`;
-      break;
-    case GradeLevel.GRADE_3: // Limit 450
-      limitChars = 450;
-      strictLimitMsg = `🚨 절대 규칙: 공백 포함 ${limitChars}자를 절대 넘기면 안 됨.`;
-      break;
-    default:
-      limitChars = 650;
-      strictLimitMsg = "적절한 분량으로 작성하시오.";
+  // Check if this is an autonomy/career record (recordType is defined)
+  if (params.recordType) {
+    // Use different limits for 자율/진로
+    const isCareer = params.recordType === RecordType.CAREER;
+    switch (params.gradeLevel) {
+      case GradeLevel.GRADE_1:
+        limitChars = isCareer ? 850 : 650;
+        break;
+      case GradeLevel.GRADE_2:
+        limitChars = isCareer ? 750 : 550;
+        break;
+      case GradeLevel.GRADE_3:
+        limitChars = isCareer ? 650 : 450;
+        break;
+      default:
+        limitChars = 650;
+    }
+  } else {
+    // Default for 교과세특 (no recordType)
+    switch (params.gradeLevel) {
+      case GradeLevel.GRADE_1:
+        limitChars = 650;
+        break;
+      case GradeLevel.GRADE_2:
+        limitChars = 550;
+        break;
+      case GradeLevel.GRADE_3:
+        limitChars = 450;
+        break;
+      default:
+        limitChars = 650;
+    }
   }
+
+  strictLimitMsg = `🚨 절대 규칙: 공백 포함 ${limitChars}자를 절대 넘기면 안 됨.`;
 
   // 4. Add User Inputs & Final Constraints
   let promptText = `
@@ -123,10 +184,15 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
     // Determine subject name: use custom subject name if provided, otherwise default to "정보"
     const subjectName = params.customSubjectName || "정보";
 
+    // Choose the appropriate system instruction based on recordType
+    const systemInstruction = params.recordType
+      ? getAutonomySystemInstruction(params.recordType, subjectName)
+      : getSystemInstruction(subjectName);
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       config: {
-        systemInstruction: getSystemInstruction(subjectName),
+        systemInstruction: systemInstruction,
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,
