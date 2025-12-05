@@ -7,6 +7,7 @@ export enum GradeLevel {
 export enum RecordType {
   AUTONOMY = '자율',
   CAREER = '진로',
+  CLUB = '동아리',
 }
 
 export interface UploadedFile {

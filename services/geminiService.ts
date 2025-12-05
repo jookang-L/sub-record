@@ -36,15 +36,27 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
       }
     });
   } else if (params.recordType) {
-    // For autonomy/career pages, load ALL default PDFs from public folder
-    const pdfFiles = [
-      '자율 (1).pdf',
-      '자율 (2).pdf',
-      '진로 (1).pdf',
-      '진로 (2).pdf',
-      '진로 (3).pdf',
-      '진로 (4).pdf'
-    ];
+    // For autonomy/career/club pages, load specific default PDFs from public folder
+    let pdfFiles: string[] = [];
+
+    if (params.recordType === RecordType.CLUB) {
+      pdfFiles = [
+        '동아리 (1).pdf',
+        '동아리 (2).pdf',
+        '동아리 (3).pdf',
+        '동아리 (4).pdf'
+      ];
+    } else {
+      // For autonomy/career pages
+      pdfFiles = [
+        '자율 (1).pdf',
+        '자율 (2).pdf',
+        '진로 (1).pdf',
+        '진로 (2).pdf',
+        '진로 (3).pdf',
+        '진로 (4).pdf'
+      ];
+    }
 
     parts.push({
       text: `[지식 베이스: 기본 참조 자료 (${params.recordType} 활동)]\\n작성 시 다음 PDF 파일들의 내용과 문체를 반드시 참고하시오.`
@@ -161,7 +173,8 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
   let promptText = `
     [사용자 입력 정보]
     1. 희망 등급: ${params.gradeLevel}
-    2. 1차 교과세특 초안 및 메모:
+    ${params.customSubjectName ? `2. 활동 분야/교과명: ${params.customSubjectName}` : ''}
+    ${params.customSubjectName ? '3' : '2'}. 1차 교과세특 초안 및 메모:
     ${params.draftText || "(없음. 보고서와 코드를 바탕으로 새로 작성)"}
     
     [★★최종 생성 전 필수 검증(Sanity Check)★★]

@@ -11,27 +11,74 @@ interface OutputDisplayProps {
 
 const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey }) => {
   const [activeTab, setActiveTab] = useState<keyof GeneratedResult>('gradeVersion');
-  const [copied, setCopied] = useState(false);
+  const [copiedAI, setCopiedAI] = useState(false);
+  const [copiedUser, setCopiedUser] = useState(false);
 
   // Local state to handle corrected text
   const [displayedContent, setDisplayedContent] = useState<string>('');
+  const [userEditedContent, setUserEditedContent] = useState<string>('');
   const [isCheckingSpelling, setIsCheckingSpelling] = useState(false);
+
+  // Resizer state
+  const [topHeight, setTopHeight] = useState(50); // percentage
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     if (result) {
       setActiveTab('gradeVersion');
       setDisplayedContent(result['gradeVersion']);
+      setUserEditedContent(result['gradeVersion']);
     }
   }, [result]);
 
   useEffect(() => {
     if (result) {
       setDisplayedContent(result[activeTab]);
+      setUserEditedContent(result[activeTab]);
     }
   }, [activeTab, result]);
 
+  // Handle mouse drag for resizing
+  const handleMouseDown = () => {
+    setIsDragging(true);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+
+    const container = document.getElementById('resizable-container');
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const newTopHeight = ((e.clientY - rect.top) / rect.height) * 100;
+
+    // Limit between 20% and 80%
+    if (newTopHeight >= 20 && newTopHeight <= 80) {
+      setTopHeight(newTopHeight);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove as any);
+      document.addEventListener('mouseup', handleMouseUp);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove as any);
+      document.removeEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove as any);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
   const handleSpellCheck = async () => {
-    if (!displayedContent) return;
+    if (!userEditedContent) return;
     if (!apiKey) {
       alert("API 키가 설정되지 않았습니다. 왼쪽 상단의 열쇠 아이콘을 눌러 키를 설정해주세요.");
       return;
@@ -39,8 +86,8 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey }) => {
 
     setIsCheckingSpelling(true);
     try {
-      const corrected = await checkSpelling(displayedContent, apiKey);
-      setDisplayedContent(corrected);
+      const corrected = await checkSpelling(userEditedContent, apiKey);
+      setUserEditedContent(corrected);
     } catch (error) {
       console.error("Spell check failed", error);
       alert("맞춤법 검사 중 오류가 발생했습니다.");
@@ -64,13 +111,22 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey }) => {
     );
   }
 
-  const charCount = displayedContent.replace(/\s/g, '').length; // No space
-  const charCountWithSpace = displayedContent.length;
+  const aiCharCount = displayedContent.replace(/\s/g, '').length;
+  const aiCharCountWithSpace = displayedContent.length;
 
-  const handleCopy = () => {
+  const userCharCount = userEditedContent.replace(/\s/g, '').length;
+  const userCharCountWithSpace = userEditedContent.length;
+
+  const handleCopyAI = () => {
     navigator.clipboard.writeText(displayedContent);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedAI(true);
+    setTimeout(() => setCopiedAI(false), 2000);
+  };
+
+  const handleCopyUser = () => {
+    navigator.clipboard.writeText(userEditedContent);
+    setCopiedUser(true);
+    setTimeout(() => setCopiedUser(false), 2000);
   };
 
   const tabs: { key: keyof GeneratedResult; label: string }[] = [
@@ -100,39 +156,84 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey }) => {
         </div>
       </div>
 
-      {/* Toolbar for Actions */}
-      <div className="px-4 py-2 border-b border-slate-100 bg-white flex justify-end gap-2">
-        <button
-          onClick={handleSpellCheck}
-          disabled={isCheckingSpelling}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors border border-transparent hover:border-blue-100"
-        >
-          {isCheckingSpelling ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-          {isCheckingSpelling ? '검사 중...' : '맞춤법 검사'}
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-8 bg-white">
-        <div className="prose prose-slate max-w-none text-slate-800 leading-8 whitespace-pre-wrap font-sans text-base">
-          {displayedContent}
+      <div className="flex-1 flex flex-col overflow-hidden" id="resizable-container">
+        {/* AI Generated Content (Top Section - Read Only) */}
+        <div className="flex flex-col border-b-2 border-slate-200" style={{ height: `${topHeight}%` }}>
+          <div className="px-4 py-2 bg-blue-50 border-b border-blue-100">
+            <h3 className="text-xs font-bold text-blue-700 uppercase tracking-wide">AI 생성 결과</h3>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+            <div className="prose prose-slate max-w-none text-slate-800 leading-7 whitespace-pre-wrap font-sans text-sm">
+              {displayedContent}
+            </div>
+          </div>
+          <div className="px-4 py-2 border-t border-slate-200 bg-white flex justify-between items-center">
+            <div className="text-xs text-slate-500 font-mono">
+              <span className={`font-semibold ${aiCharCountWithSpace > 750 ? 'text-red-500' : 'text-slate-700'}`}>{aiCharCountWithSpace}자</span> (공백포함) &middot;
+              <span className="ml-1">{aiCharCount}자</span> (공백제외)
+            </div>
+            <button
+              onClick={handleCopyAI}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors ${copiedAI
+                ? 'bg-green-100 text-green-700 border border-green-200'
+                : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                }`}
+            >
+              {copiedAI ? <Check size={14} /> : <Copy size={14} />}
+              {copiedAI ? '복사완료' : '복사'}
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center">
-        <div className="text-xs text-slate-500 font-mono">
-          <span className={`font-semibold ${charCountWithSpace > 750 ? 'text-red-500' : 'text-slate-700'}`}>{charCountWithSpace}자</span> (공백포함) &middot;
-          <span className="ml-1">{charCount}자</span> (공백제외)
-        </div>
-        <button
-          onClick={handleCopy}
-          className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-colors ${copied
-            ? 'bg-green-100 text-green-700 border border-green-200'
-            : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
-            }`}
+        {/* Resizer Handle */}
+        <div
+          onMouseDown={handleMouseDown}
+          className={`h-2 bg-slate-300 hover:bg-blue-400 cursor-row-resize flex items-center justify-center transition-colors ${isDragging ? 'bg-blue-500' : ''}`}
+          style={{ userSelect: 'none' }}
         >
-          {copied ? <Check size={16} /> : <Copy size={16} />}
-          {copied ? '복사완료' : '결과 복사'}
-        </button>
+          <div className="w-12 h-1 bg-slate-400 rounded-full"></div>
+        </div>
+
+        {/* User Editable Content (Bottom Section) */}
+        <div className="flex flex-col" style={{ height: `${100 - topHeight}%` }}>
+          <div className="px-4 py-2 bg-green-50 border-b border-green-100">
+            <h3 className="text-xs font-bold text-green-700 uppercase tracking-wide">편집 가능 영역</h3>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 bg-white">
+            <textarea
+              value={userEditedContent}
+              onChange={(e) => setUserEditedContent(e.target.value)}
+              className="w-full h-full resize-none text-slate-800 leading-7 whitespace-pre-wrap font-sans text-sm border-none focus:outline-none focus:ring-0"
+              placeholder="여기서 AI 생성 결과를 자유롭게 편집할 수 있습니다..."
+            />
+          </div>
+          <div className="px-4 py-2 border-t border-slate-200 bg-white flex justify-between items-center">
+            <div className="text-xs text-slate-500 font-mono">
+              <span className={`font-semibold ${userCharCountWithSpace > 750 ? 'text-red-500' : 'text-slate-700'}`}>{userCharCountWithSpace}자</span> (공백포함) &middot;
+              <span className="ml-1">{userCharCount}자</span> (공백제외)
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSpellCheck}
+                disabled={isCheckingSpelling}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:bg-purple-50 hover:text-purple-600 transition-colors border border-slate-300 hover:border-purple-200"
+              >
+                {isCheckingSpelling ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                {isCheckingSpelling ? '검사 중...' : '맞춤법 검사'}
+              </button>
+              <button
+                onClick={handleCopyUser}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors ${copiedUser
+                  ? 'bg-green-100 text-green-700 border border-green-200'
+                  : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                  }`}
+              >
+                {copiedUser ? <Check size={14} /> : <Copy size={14} />}
+                {copiedUser ? '복사완료' : '복사'}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

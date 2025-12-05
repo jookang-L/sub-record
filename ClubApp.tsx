@@ -4,11 +4,11 @@ import { ArrowRight, AlertCircle, Loader2, Key } from 'lucide-react';
 import FileUpload from './components/FileUpload';
 import OutputDisplay from './components/OutputDisplay';
 import ApiKeyInput from './components/ApiKeyInput';
-import { UploadedFile, GradeLevel, GeneratedResult } from './types';
+import { UploadedFile, GradeLevel, GeneratedResult, RecordType } from './types';
 import { GRADE_DESCRIPTIONS } from './constants';
 import { generateStudentReport } from './services/geminiService';
 
-const App: React.FC = () => {
+const ClubApp: React.FC = () => {
   // State
   const [reportFiles, setReportFiles] = useState<UploadedFile[]>([]);
   const [codeFiles, setCodeFiles] = useState<UploadedFile[]>([]);
@@ -36,10 +36,10 @@ const App: React.FC = () => {
       setApiKey(storedKey);
     }
 
-    const storedKbContent = localStorage.getItem('knowledge_base_content');
-    const storedKbName = localStorage.getItem('knowledge_base_name');
-    const storedKbMime = localStorage.getItem('knowledge_base_mime');
-    const storedSubjectName = localStorage.getItem('custom_subject_name');
+    const storedKbContent = localStorage.getItem('club_knowledge_base_content');
+    const storedKbName = localStorage.getItem('club_knowledge_base_name');
+    const storedKbMime = localStorage.getItem('club_knowledge_base_mime');
+    const storedSubjectName = localStorage.getItem('club_custom_subject_name');
     if (storedKbContent) {
       setKnowledgeBaseContent(storedKbContent);
       setKnowledgeBaseFileName(storedKbName || '사용자 정의 지식 베이스');
@@ -73,9 +73,9 @@ const App: React.FC = () => {
       setKnowledgeBaseFileName(file.name);
       setKnowledgeBaseMimeType(file.type);
 
-      localStorage.setItem('knowledge_base_content', file.data);
-      localStorage.setItem('knowledge_base_name', file.name);
-      localStorage.setItem('knowledge_base_mime', file.type);
+      localStorage.setItem('club_knowledge_base_content', file.data);
+      localStorage.setItem('club_knowledge_base_name', file.name);
+      localStorage.setItem('club_knowledge_base_mime', file.type);
     }
   };
 
@@ -85,10 +85,10 @@ const App: React.FC = () => {
     setKnowledgeBaseMimeType('application/pdf');
     setCustomSubjectName(null);
 
-    localStorage.removeItem('knowledge_base_content');
-    localStorage.removeItem('knowledge_base_name');
-    localStorage.removeItem('knowledge_base_mime');
-    localStorage.removeItem('custom_subject_name');
+    localStorage.removeItem('club_knowledge_base_content');
+    localStorage.removeItem('club_knowledge_base_name');
+    localStorage.removeItem('club_knowledge_base_mime');
+    localStorage.removeItem('club_custom_subject_name');
   };
 
   // Handlers
@@ -118,7 +118,8 @@ const App: React.FC = () => {
           data: knowledgeBaseContent,
           mimeType: knowledgeBaseMimeType
         } : undefined,
-        customSubjectName: customSubjectName || undefined
+        customSubjectName: customSubjectName || undefined,
+        recordType: RecordType.CLUB
       }, apiKey);
       setResult(generatedData);
     } catch (e: any) {
@@ -161,10 +162,10 @@ const App: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-800 leading-tight">
-                  교과세특 도우미
+                  동아리 도우미
                 </h1>
                 <p className="text-xs text-slate-600 font-medium mt-1 bg-yellow-100 px-2 py-0.5 rounded-sm inline-block">
-                  교과별 세특 도우미 with jook
+                  동아리 활동 도우미 with jook
                 </p>
               </div>
             </div>
@@ -205,7 +206,7 @@ const App: React.FC = () => {
                     현재는 제작자의 파일로 학습되어 있습니다.
                   </div>
                   <div className="text-[11px] text-slate-500">
-                    (정보 교과 및 인공지능 기초 교과 생기부)
+                    (동아리 활동 우수 사례 기록)
                   </div>
                 </div>
               </div>
@@ -213,10 +214,6 @@ const App: React.FC = () => {
 
             {knowledgeBaseContent ? (
               <div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">교과명</label>
-                  <p className="text-sm text-slate-900 font-medium">{customSubjectName || '(교과명 미입력)'}</p>
-                </div>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3 overflow-hidden">
                     <div className="bg-green-100 p-2 rounded-full">
@@ -236,38 +233,19 @@ const App: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div>
-                <div className="mb-4">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">교과명 입력 (필수)</label>
-                  <input
-                    type="text"
-                    className="w-full p-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-shadow placeholder-slate-400"
-                    placeholder="예: 수학, 영어, 과학, 정보 등"
-                    value={customSubjectName || ''}
-                    onChange={(e) => {
-                      setCustomSubjectName(e.target.value);
-                      if (e.target.value) {
-                        localStorage.setItem('custom_subject_name', e.target.value);
-                      } else {
-                        localStorage.removeItem('custom_subject_name');
-                      }
-                    }}
-                  />
-                </div>
-                <FileUpload
-                  title="지식 베이스 파일"
-                  category="knowledge"
-                  accept=".pdf"
-                  files={[]}
-                  onFilesChange={handleKnowledgeBaseUpload}
-                  description={
-                    <>
-                      <span className="text-red-600 font-semibold">PDF파일</span>만 업로드 가능합니다.
-                    </>
-                  }
-                  maxFiles={1}
-                />
-              </div>
+              <FileUpload
+                title="지식 베이스 파일"
+                category="knowledge"
+                accept=".pdf"
+                files={[]}
+                onFilesChange={handleKnowledgeBaseUpload}
+                description={
+                  <>
+                    <span className="text-red-600 font-semibold">PDF파일</span>만 업로드 가능합니다.
+                  </>
+                }
+                maxFiles={1}
+              />
             )}
             <p className="text-xs text-slate-400 mt-3">
               💡 업로드 시 브라우저에 저장되어 재방문 시에도 유지됩니다.
@@ -305,6 +283,24 @@ const App: React.FC = () => {
               <span className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold shadow-md">3</span>
               추가 정보
             </h2>
+
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-slate-700 mb-2">동아리 활동 분야 입력 (선택)</label>
+              <input
+                type="text"
+                className="w-full p-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-shadow placeholder-slate-400"
+                placeholder="예: 코딩, 과학탐구, 봉사활동 등"
+                value={customSubjectName || ''}
+                onChange={(e) => {
+                  setCustomSubjectName(e.target.value);
+                  if (e.target.value) {
+                    localStorage.setItem('club_custom_subject_name', e.target.value);
+                  } else {
+                    localStorage.removeItem('club_custom_subject_name');
+                  }
+                }}
+              />
+            </div>
 
             <div className="mb-6">
               <label className="block text-sm font-bold text-slate-700 mb-2">세특 작성에 포함되었으면 하는 내용 (선택)</label>
@@ -395,4 +391,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+export default ClubApp;
