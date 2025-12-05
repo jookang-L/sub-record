@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
         input: {
           main: path.resolve(__dirname, 'index.html'),
           subject: path.resolve(__dirname, 'subject.html'),
+          autonomy: path.resolve(__dirname, 'autonomy.html'),
         },
       },
     },

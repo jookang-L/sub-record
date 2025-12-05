@@ -228,7 +228,7 @@ const AutonomyApp: React.FC = () => {
                                 onFilesChange={handleKnowledgeBaseUpload}
                                 description={
                                     <>
-                                        기본 자료 대신 사용할 <span className="text-red-600 font-semibold">PDF 파일만 업로드 가능</span>합니다.
+                                        <span className="text-red-600 font-semibold">PDF파일</span>만 업로드 가능합니다.
                                     </>
                                 }
                                 maxFiles={1}
@@ -272,10 +272,10 @@ const AutonomyApp: React.FC = () => {
                         </h2>
 
                         <div className="mb-6">
-                            <label className="block text-sm font-bold text-slate-700 mb-2">1차 활동 기록 초안 (선택)</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">세특 작성에 포함되었으면 하는 내용 (선택)</label>
                             <textarea
                                 className="w-full h-28 p-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none shadow-sm transition-shadow placeholder-slate-400"
-                                placeholder="이미 작성해둔 내용이나 포함하고 싶은 핵심 키워드가 있다면 입력해주세요."
+                                placeholder="포함하고 싶은 핵심 키워드를 입력해주세요."
                                 value={draftText}
                                 onChange={(e) => setDraftText(e.target.value)}
                             />

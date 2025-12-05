@@ -75,7 +75,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             {category === 'report' ? <FileText size={18} className="text-blue-500" /> : <FileCode size={18} className="text-green-500" />}
             {title}
           </h3>
-          <p className="text-xs text-slate-500 mt-1">{description}</p>
+          <p className="text-xs text-slate-500 mt-1 whitespace-nowrap">{description}</p>
         </div>
         <button
           onClick={() => fileInputRef.current?.click()}
