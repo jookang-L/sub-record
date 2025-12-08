@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
           subject: path.resolve(__dirname, 'subject.html'),
           autonomy: path.resolve(__dirname, 'autonomy.html'),
           club: path.resolve(__dirname, 'club.html'),
+          behavior: path.resolve(__dirname, 'behavior.html'),
         },
       },
     },
