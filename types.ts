@@ -8,6 +8,7 @@ export enum RecordType {
   AUTONOMY = '자율',
   CAREER = '진로',
   CLUB = '동아리',
+  BEHAVIOR = '행특',
 }
 
 export interface UploadedFile {

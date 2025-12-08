@@ -5,22 +5,18 @@ import FileUpload from './components/FileUpload';
 import OutputDisplay from './components/OutputDisplay';
 import ApiKeyInput from './components/ApiKeyInput';
 import { UploadedFile, GradeLevel, GeneratedResult, RecordType } from './types';
-import { AUTONOMY_GRADE_DESCRIPTIONS } from './autonomyConstants';
+import { BEHAVIOR_GRADE_DESCRIPTIONS } from './behaviorConstants';
 import { generateStudentReport } from './services/geminiService';
 
-const AutonomyApp: React.FC = () => {
+const BehaviorApp: React.FC = () => {
     // State
-    const [reportFiles, setReportFiles] = useState<UploadedFile[]>([]);
-    const [codeFiles, setCodeFiles] = useState<UploadedFile[]>([]);
     const [draftText, setDraftText] = useState<string>('');
     const [gradeLevel, setGradeLevel] = useState<GradeLevel>(GradeLevel.GRADE_2);
-    const [recordType, setRecordType] = useState<RecordType>(RecordType.AUTONOMY);
 
     // Knowledge Base State
     const [knowledgeBaseContent, setKnowledgeBaseContent] = useState<string | null>(null);
     const [knowledgeBaseFileName, setKnowledgeBaseFileName] = useState<string | null>(null);
     const [knowledgeBaseMimeType, setKnowledgeBaseMimeType] = useState<string>('application/pdf');
-    const [customSubjectName, setCustomSubjectName] = useState<string | null>(null);
 
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
     const [result, setResult] = useState<GeneratedResult | null>(null);
@@ -37,15 +33,13 @@ const AutonomyApp: React.FC = () => {
             setApiKey(storedKey);
         }
 
-        const storedKbContent = localStorage.getItem('autonomy_knowledge_base_content');
-        const storedKbName = localStorage.getItem('autonomy_knowledge_base_name');
-        const storedKbMime = localStorage.getItem('autonomy_knowledge_base_mime');
-        const storedSubjectName = localStorage.getItem('autonomy_custom_subject_name');
+        const storedKbContent = localStorage.getItem('behavior_knowledge_base_content');
+        const storedKbName = localStorage.getItem('behavior_knowledge_base_name');
+        const storedKbMime = localStorage.getItem('behavior_knowledge_base_mime');
         if (storedKbContent) {
             setKnowledgeBaseContent(storedKbContent);
             setKnowledgeBaseFileName(storedKbName || '사용자 정의 지식 베이스');
             setKnowledgeBaseMimeType(storedKbMime || 'application/pdf');
-            setCustomSubjectName(storedSubjectName);
         }
     }, []);
 
@@ -62,9 +56,9 @@ const AutonomyApp: React.FC = () => {
             setKnowledgeBaseFileName(file.name);
             setKnowledgeBaseMimeType(file.type);
 
-            localStorage.setItem('autonomy_knowledge_base_content', file.data);
-            localStorage.setItem('autonomy_knowledge_base_name', file.name);
-            localStorage.setItem('autonomy_knowledge_base_mime', file.type);
+            localStorage.setItem('behavior_knowledge_base_content', file.data);
+            localStorage.setItem('behavior_knowledge_base_name', file.name);
+            localStorage.setItem('behavior_knowledge_base_mime', file.type);
         }
     };
 
@@ -72,12 +66,10 @@ const AutonomyApp: React.FC = () => {
         setKnowledgeBaseContent(null);
         setKnowledgeBaseFileName(null);
         setKnowledgeBaseMimeType('application/pdf');
-        setCustomSubjectName(null);
 
-        localStorage.removeItem('autonomy_knowledge_base_content');
-        localStorage.removeItem('autonomy_knowledge_base_name');
-        localStorage.removeItem('autonomy_knowledge_base_mime');
-        localStorage.removeItem('autonomy_custom_subject_name');
+        localStorage.removeItem('behavior_knowledge_base_content');
+        localStorage.removeItem('behavior_knowledge_base_name');
+        localStorage.removeItem('behavior_knowledge_base_mime');
     };
 
     // Handlers
@@ -89,8 +81,8 @@ const AutonomyApp: React.FC = () => {
         }
 
         // Validation
-        if (reportFiles.length === 0 && codeFiles.length === 0 && !draftText.trim()) {
-            setError("최소한 하나 이상의 자료(보고서, 코드, 초안)가 필요합니다.");
+        if (!draftText.trim()) {
+            setError("학생의 학교생활, 성격 등 참고할 내용을 입력해주세요.");
             return;
         }
 
@@ -99,16 +91,15 @@ const AutonomyApp: React.FC = () => {
 
         try {
             const generatedData = await generateStudentReport({
-                reportFiles,
-                codeFiles,
+                reportFiles: [],
+                codeFiles: [],
                 draftText,
                 gradeLevel,
                 customKnowledgeBase: knowledgeBaseContent ? {
                     data: knowledgeBaseContent,
                     mimeType: knowledgeBaseMimeType
                 } : undefined,
-                customSubjectName: customSubjectName || undefined,
-                recordType
+                recordType: RecordType.BEHAVIOR
             }, apiKey);
             setResult(generatedData);
         } catch (e: any) {
@@ -151,10 +142,10 @@ const AutonomyApp: React.FC = () => {
                             </div>
                             <div>
                                 <h1 className="text-xl font-bold text-slate-800 leading-tight">
-                                    자율/진로 도우미
+                                    행특 도우미
                                 </h1>
                                 <p className="text-xs text-slate-600 font-medium mt-1 bg-yellow-100 px-2 py-0.5 rounded-sm inline-block">
-                                    자율/진로 활동 기록 도우미 made by jook
+                                    행동특성 및 종합의견 도우미 with jook
                                 </p>
                             </div>
                         </div>
@@ -195,29 +186,31 @@ const AutonomyApp: React.FC = () => {
                                         현재는 제작자의 파일로 학습되어 있습니다.
                                     </div>
                                     <div className="text-[11px] text-slate-500">
-                                        (자율/진로 활동 우수 사례 기록)
+                                        (행동특성 및 종합의견 우수 사례)
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {knowledgeBaseContent ? (
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="bg-green-100 p-2 rounded-full">
-                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div>
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className="bg-green-100 p-2 rounded-full">
+                                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-green-800 truncate">{knowledgeBaseFileName}</p>
+                                            <p className="text-xs text-green-600">사용자 정의 지식 베이스 적용 중</p>
+                                        </div>
                                     </div>
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-bold text-green-800 truncate">{knowledgeBaseFileName}</p>
-                                        <p className="text-xs text-green-600">사용자 정의 지식 베이스 적용 중</p>
-                                    </div>
+                                    <button
+                                        onClick={handleResetKnowledgeBase}
+                                        className="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded transition-colors"
+                                    >
+                                        초기화
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={handleResetKnowledgeBase}
-                                    className="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded transition-colors"
-                                >
-                                    초기화
-                                </button>
                             </div>
                         ) : (
                             <FileUpload
@@ -239,74 +232,21 @@ const AutonomyApp: React.FC = () => {
                         </p>
                     </section>
 
-                    <section className="mt-8 bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-6 shadow-sm">
-                        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 border-b-2 border-orange-300 pb-3 flex items-center gap-2">
-                            <span className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center text-sm font-bold shadow-md">2</span>
-                            자료 업로드
-                        </h2>
-
-                        <FileUpload
-                            title="학생 보고서"
-                            category="report"
-                            accept=".pdf,.doc,.docx,.hwp,image/*,.txt"
-                            files={reportFiles}
-                            onFilesChange={setReportFiles}
-                            description="활동보고서, 발표자료, 포트폴리오"
-                        />
-
-                        <FileUpload
-                            title="코드 파일"
-                            category="code"
-                            accept=".py,.ipynb,.java,.c,.cpp,.js,.html,.css,.txt"
-                            files={codeFiles}
-                            onFilesChange={setCodeFiles}
-                            description="활동 증빙을 위한 소스 코드 파일"
-                        />
-                    </section>
-
 
                     <section className="mt-8 mb-8 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6 shadow-sm">
                         <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 border-b-2 border-green-300 pb-3 flex items-center gap-2">
-                            <span className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold shadow-md">3</span>
+                            <span className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold shadow-md">2</span>
                             추가 정보
                         </h2>
 
                         <div className="mb-6">
-                            <label className="block text-sm font-bold text-slate-700 mb-2">세특 작성에 포함되었으면 하는 내용 (선택)</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">학생의 전반적인 학교생활, 성격 등 참고할 만한 내용 (선택)</label>
                             <textarea
                                 className="w-full h-28 p-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none shadow-sm transition-shadow placeholder-slate-400"
-                                placeholder="포함하고 싶은 핵심 키워드를 입력해주세요."
+                                placeholder="예: 책임감 있음, 리더십 발휘, 긍정적인 태도 등"
                                 value={draftText}
                                 onChange={(e) => setDraftText(e.target.value)}
                             />
-                        </div>
-
-                        <div className="mb-6">
-                            <label className="block text-sm font-bold text-slate-700 mb-3">활동 유형 선택</label>
-                            <div className="flex gap-3">
-                                {Object.values(RecordType).filter(type => type !== RecordType.CLUB).map((type) => (
-                                    <div
-                                        key={type}
-                                        onClick={() => setRecordType(type)}
-                                        className={`flex-1 flex items-center justify-center p-3 border-2 rounded-xl cursor-pointer transition-all duration-200 ${recordType === type
-                                            ? 'border-yellow-500 bg-yellow-50 ring-2 ring-yellow-400 shadow-md'
-                                            : 'border-slate-200 bg-white hover:border-yellow-300 hover:shadow-sm'
-                                            }`}
-                                    >
-                                        <div className={`flex items-center justify-center w-5 h-5 rounded-full border-2 mr-2 transition-colors ${recordType === type
-                                            ? 'border-yellow-600 bg-yellow-600'
-                                            : 'border-slate-300 bg-slate-50'
-                                            }`}>
-                                            {recordType === type && (
-                                                <div className="w-2.5 h-2.5 bg-white rounded-full shadow-sm" />
-                                            )}
-                                        </div>
-                                        <span className={`text-sm font-bold ${recordType === type ? 'text-yellow-900' : 'text-slate-700'}`}>
-                                            {type}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
 
                         <div className="mb-6">
@@ -336,7 +276,7 @@ const AutonomyApp: React.FC = () => {
                                                 </span>
                                             </div>
                                             <span className={`block text-xs mt-1 leading-tight ${gradeLevel === grade ? 'text-blue-700' : 'text-slate-500'}`}>
-                                                {AUTONOMY_GRADE_DESCRIPTIONS[recordType][grade]}
+                                                {BEHAVIOR_GRADE_DESCRIPTIONS[grade]}
                                             </span>
                                         </div>
                                     </div>
@@ -346,7 +286,7 @@ const AutonomyApp: React.FC = () => {
 
                         <div className="text-center pt-4 border-t border-slate-100">
                             <p className="text-xs text-slate-400">
-                                업로드된 모든 자료는 AI 분석에만 활용되며 별도로 저장되지 않습니다.
+                                입력된 모든 정보는 AI 분석에만 활용되며 별도로 저장되지 않습니다.
                             </p>
                         </div>
                     </section>
@@ -388,4 +328,4 @@ const AutonomyApp: React.FC = () => {
     );
 };
 
-export default AutonomyApp;
+export default BehaviorApp;
