@@ -284,7 +284,7 @@ const AutonomyApp: React.FC = () => {
                         <div className="mb-6">
                             <label className="block text-sm font-bold text-slate-700 mb-3">활동 유형 선택</label>
                             <div className="flex gap-3">
-                                {Object.values(RecordType).filter(type => type !== RecordType.CLUB).map((type) => (
+                                {Object.values(RecordType).filter(type => type !== RecordType.CLUB && type !== RecordType.BEHAVIOR).map((type) => (
                                     <div
                                         key={type}
                                         onClick={() => setRecordType(type)}

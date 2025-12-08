@@ -46,6 +46,11 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
         '동아리 (3).pdf',
         '동아리 (4).pdf'
       ];
+    } else if (params.recordType === RecordType.BEHAVIOR) {
+      // For behavior pages
+      pdfFiles = [
+        '행특 (1).pdf'
+      ];
     } else {
       // For autonomy/career pages
       pdfFiles = [
