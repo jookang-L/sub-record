@@ -4,6 +4,7 @@ import { ArrowRight, AlertCircle, Loader2, Key } from 'lucide-react';
 import FileUpload from './components/FileUpload';
 import OutputDisplay from './components/OutputDisplay';
 import ApiKeyInput from './components/ApiKeyInput';
+import CustomCalendar from './components/CustomCalendar';
 import { UploadedFile, GradeLevel, GeneratedResult, RecordType } from './types';
 import { AUTONOMY_GRADE_DESCRIPTIONS } from './autonomyConstants';
 import { generateStudentReport } from './services/geminiService';
@@ -21,6 +22,10 @@ const AutonomyApp: React.FC = () => {
     const [knowledgeBaseFileName, setKnowledgeBaseFileName] = useState<string | null>(null);
     const [knowledgeBaseMimeType, setKnowledgeBaseMimeType] = useState<string>('application/pdf');
     const [customSubjectName, setCustomSubjectName] = useState<string | null>(null);
+
+    // New State for Split View
+    const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+    const [activityInput, setActivityInput] = useState<string>('');
 
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
     const [result, setResult] = useState<GeneratedResult | null>(null);
@@ -89,8 +94,8 @@ const AutonomyApp: React.FC = () => {
         }
 
         // Validation
-        if (reportFiles.length === 0 && codeFiles.length === 0 && !draftText.trim()) {
-            setError("최소한 하나 이상의 자료(보고서, 코드, 초안)가 필요합니다.");
+        if (reportFiles.length === 0 && codeFiles.length === 0 && !draftText.trim() && !activityInput.trim()) {
+            setError("최소한 하나 이상의 자료(보고서, 코드, 초안) 또는 활동 내용이 필요합니다.");
             return;
         }
 
@@ -98,15 +103,56 @@ const AutonomyApp: React.FC = () => {
         setIsGenerating(true);
 
         try {
+            let finalKnowledgeBase = knowledgeBaseContent ? {
+                data: knowledgeBaseContent,
+                mimeType: knowledgeBaseMimeType
+            } : undefined;
+
+            let finalDraftText = draftText;
+
+            // Special Logic: If Activity Input & Date are provided
+            if (activityInput.trim() && selectedDate) {
+                // 1. Fetch special PDF
+                try {
+                    const response = await fetch('/활동 없는 자율활동 생기부 (1).pdf'); // Assuming it's in public root
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const base64 = await new Promise<string>((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                const dataUrl = reader.result as string;
+                                resolve(dataUrl.split(',')[1]); // Remove prefix
+                            };
+                            reader.readAsDataURL(blob);
+                        });
+
+                        // Override Knowledge Base
+                        finalKnowledgeBase = {
+                            data: base64,
+                            mimeType: 'application/pdf' // Explicitly set PDF
+                        };
+                    } else {
+                        console.warn("Special PDF not found, proceeding with default.");
+                    }
+                } catch (err) {
+                    console.error("Error fetching special PDF:", err);
+                }
+
+                // 2. Combine Info into Draft Text
+                const year = selectedDate.getFullYear();
+                const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                const day = String(selectedDate.getDate()).padStart(2, '0');
+                const formattedDate = `${year}.${month}.${day}.`;
+
+                finalDraftText = `[필수 포함 조건]\n문장을 시작할 때 반드시 다음 형식을 정확히 지켜서 작성하시오: "${activityInput}(${formattedDate})을 통해~"\n\n[활동 정보]\n날짜: ${formattedDate}\n활동 내용: ${activityInput}\n\n${draftText}`;
+            }
+
             const generatedData = await generateStudentReport({
                 reportFiles,
                 codeFiles,
-                draftText,
+                draftText: finalDraftText,
                 gradeLevel,
-                customKnowledgeBase: knowledgeBaseContent ? {
-                    data: knowledgeBaseContent,
-                    mimeType: knowledgeBaseMimeType
-                } : undefined,
+                customKnowledgeBase: finalKnowledgeBase,
                 customSubjectName: customSubjectName || undefined,
                 recordType
             }, apiKey);
@@ -271,6 +317,37 @@ const AutonomyApp: React.FC = () => {
                             추가 정보
                         </h2>
 
+                        <div className="bg-green-700 border border-green-600 rounded-xl p-4 mb-6 shadow-md">
+                            <div className="flex items-center justify-center gap-2 mb-3">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white flex-shrink-0"></div>
+                                <h3 className="text-xs font-bold text-white whitespace-nowrap">
+                                    활동 내용이 없는 학생을 위한 공간
+                                </h3>
+                            </div>
+
+                            <div className="flex flex-row gap-4">
+                                {/* Left: Calendar */}
+                                <div className="flex-none w-[140px]">
+                                    <label className="block text-xs font-bold text-green-100 mb-2 whitespace-nowrap text-center">활동 날짜 선택</label>
+                                    <CustomCalendar
+                                        selectedDate={selectedDate}
+                                        onDateSelect={setSelectedDate}
+                                    />
+                                </div>
+
+                                {/* Right: Activity Input */}
+                                <div className="flex-1 flex flex-col min-w-0">
+                                    <label className="block text-xs font-bold text-green-100 mb-2 truncate text-center">자율(교내) 활동 내용 입력</label>
+                                    <textarea
+                                        className="flex-1 w-full p-3 text-xs border border-green-600 bg-white rounded-xl focus:ring-2 focus:ring-green-400 focus:border-transparent resize-none shadow-sm transition-shadow placeholder-slate-400 leading-relaxed text-slate-800"
+                                        placeholder={`학교폭력 예방교육\n봉사활동 소양교육\n정보통신 윤리교육 등`}
+                                        value={activityInput}
+                                        onChange={(e) => setActivityInput(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="mb-6">
                             <label className="block text-sm font-bold text-slate-700 mb-2">세특 작성에 포함되었으면 하는 내용 (선택)</label>
                             <textarea
@@ -346,7 +423,7 @@ const AutonomyApp: React.FC = () => {
 
                         <div className="text-center pt-4 border-t border-slate-100">
                             <p className="text-xs text-slate-400">
-                                업로드된 모든 자료는 AI 분석에만 활용되며 별도로 저장되지 않습니다.
+                                업로드된 모든 자료는 별도로 저장되지 않습니다.
                             </p>
                         </div>
                     </section>
@@ -384,7 +461,7 @@ const AutonomyApp: React.FC = () => {
             <div className="flex-1 h-full bg-slate-50 relative z-10 flex flex-col">
                 <OutputDisplay result={result} apiKey={apiKey} />
             </div>
-        </div>
+        </div >
     );
 };
 

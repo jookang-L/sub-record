@@ -353,7 +353,7 @@ const App: React.FC = () => {
 
             <div className="text-center pt-4 border-t border-slate-100">
               <p className="text-xs text-slate-400">
-                업로드된 모든 자료는 AI 분석에만 활용되며 별도로 저장되지 않습니다.
+                업로드된 모든 자료는 별도로 저장되지 않습니다.
               </p>
             </div>
           </section>
