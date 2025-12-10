@@ -7,6 +7,7 @@ import ApiKeyInput from './components/ApiKeyInput';
 import { UploadedFile, GradeLevel, GeneratedResult, RecordType } from './types';
 import { BEHAVIOR_GRADE_DESCRIPTIONS } from './behaviorConstants';
 import { generateStudentReport } from './services/geminiService';
+import { useHistory } from './hooks/useHistory';
 
 const BehaviorApp: React.FC = () => {
     // State
@@ -24,6 +25,20 @@ const BehaviorApp: React.FC = () => {
     // API Key State
     const [apiKey, setApiKey] = useState<string | null>(null);
     const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+
+    // History Hook (Behavior specific)
+    const { history, addToHistory, updateHistoryItem, removeFromHistory } = useHistory('history_behavior');
+    const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null);
+
+    // Debug: Log history on mount and changes
+    useEffect(() => {
+        console.log('[행특 App] 마운트됨, history 개수:', history.length);
+        console.log('[행특 App] localStorage 확인:', localStorage.getItem('history_behavior'));
+    }, []);
+
+    useEffect(() => {
+        console.log('[행특 App] history 변경됨:', history.length, '개');
+    }, [history]);
 
     // Load API Key and Knowledge Base from localStorage
     useEffect(() => {
@@ -107,6 +122,11 @@ const BehaviorApp: React.FC = () => {
                 recordType: RecordType.BEHAVIOR
             }, apiKey);
             setResult(generatedData);
+
+            // Add to History
+            const newId = addToHistory(generatedData, `행특 - ${gradeLevel}`);
+            setCurrentHistoryId(newId);
+            console.log('[행특] 히스토리 추가됨:', newId, history.length);
         } catch (e: any) {
             setError(e.message || "생성 중 알 수 없는 오류가 발생했습니다.");
         } finally {
@@ -295,7 +315,9 @@ const BehaviorApp: React.FC = () => {
                         onClick={handleGenerate}
                         disabled={isGenerating}
                         title={apiKey ? "생기부 생성하기" : "API 키를 먼저 설정해주세요"}
-                        className={`flex flex-col items-center justify-center w-20 h-20 rounded-full shadow-[0_4px_20px_rgba(37,99,235,0.4)] border-4 border-white transition-all duration-300 ${isGenerating
+                        className={`flex flex-col items-center justify-center w-20 h-20 rounded-full shadow-[0_4px_20px_rgba(37,99,235,0.4)] border-4 border-white transition-all duration-300 ${
+                            result ? 'opacity-30 hover:opacity-100' : ''
+                        } ${isGenerating
                             ? 'bg-slate-100 cursor-wait scale-95'
                             : !apiKey
                                 ? 'bg-slate-300 cursor-not-allowed grayscale'
@@ -319,7 +341,21 @@ const BehaviorApp: React.FC = () => {
 
             {/* Right Column: Output */}
             <div className="flex-1 h-full bg-slate-50 relative z-10 flex flex-col">
-                <OutputDisplay result={result} apiKey={apiKey} />
+                <OutputDisplay
+                    result={result}
+                    apiKey={apiKey}
+                    historyItems={history}
+                    onRestore={(item) => {
+                        setResult(item.result);
+                        setCurrentHistoryId(item.id);
+                    }}
+                    onDeleteHistory={removeFromHistory}
+                    onUpdateHistory={(updates) => {
+                        if (currentHistoryId) {
+                            updateHistoryItem(currentHistoryId, { result: { ...result!, ...updates } });
+                        }
+                    }}
+                />
             </div>
         </div>
     );

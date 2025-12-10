@@ -37,3 +37,10 @@ export interface GenerationParams {
   customSubjectName?: string;
   recordType?: RecordType;
 }
+
+export interface HistoryItem {
+  id: string;
+  timestamp: number;
+  result: GeneratedResult;
+  summary?: string;
+}
