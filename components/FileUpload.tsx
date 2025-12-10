@@ -5,7 +5,7 @@ import { UploadedFile } from '../types';
 interface FileUploadProps {
   title: string;
   accept: string;
-  category: 'report' | 'code';
+  category: 'report' | 'code' | 'knowledge';
   files: UploadedFile[];
   onFilesChange: (files: UploadedFile[]) => void;
   description: React.ReactNode;

@@ -24,16 +24,19 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
   const parts: any[] = [];
 
   // 1. Inject Knowledge Base
-  if (params.customKnowledgeBase) {
-    // Only PDF files are supported for custom knowledge base
+  if (params.customKnowledgeBase && params.customKnowledgeBase.length > 0) {
+    // Only PDF files are supported for custom knowledge base (but array is allowed now)
     parts.push({
-      text: `[지식 베이스: 사용자 정의 참조 자료 (PDF)]\\n작성 시 다음 PDF 파일의 내용을 반드시 참고하시오.`
+      text: `[지식 베이스: 사용자 정의 참조 자료]\\n작성 시 다음 파일들의 내용을 반드시 참고하시오.`
     });
-    parts.push({
-      inlineData: {
-        mimeType: params.customKnowledgeBase.mimeType,
-        data: getBase64Data(params.customKnowledgeBase.data)
-      }
+
+    params.customKnowledgeBase.forEach((kbFile) => {
+      parts.push({
+        inlineData: {
+          mimeType: kbFile.mimeType,
+          data: getBase64Data(kbFile.data)
+        }
+      });
     });
   } else if (params.recordType) {
     // For autonomy/career/club pages, load specific default PDFs from public folder

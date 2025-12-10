@@ -18,9 +18,8 @@ const AutonomyApp: React.FC = () => {
     const [recordType, setRecordType] = useState<RecordType>(RecordType.AUTONOMY);
 
     // Knowledge Base State
-    const [knowledgeBaseContent, setKnowledgeBaseContent] = useState<string | null>(null);
-    const [knowledgeBaseFileName, setKnowledgeBaseFileName] = useState<string | null>(null);
-    const [knowledgeBaseMimeType, setKnowledgeBaseMimeType] = useState<string>('application/pdf');
+    // Knowledge Base State
+    const [knowledgeBaseFiles, setKnowledgeBaseFiles] = useState<UploadedFile[]>([]);
     const [customSubjectName, setCustomSubjectName] = useState<string | null>(null);
 
     // New State for Split View
@@ -42,14 +41,34 @@ const AutonomyApp: React.FC = () => {
             setApiKey(storedKey);
         }
 
-        const storedKbContent = localStorage.getItem('autonomy_knowledge_base_content');
-        const storedKbName = localStorage.getItem('autonomy_knowledge_base_name');
-        const storedKbMime = localStorage.getItem('autonomy_knowledge_base_mime');
+        const storedKbFiles = localStorage.getItem('autonomy_knowledge_base_files');
         const storedSubjectName = localStorage.getItem('autonomy_custom_subject_name');
-        if (storedKbContent) {
-            setKnowledgeBaseContent(storedKbContent);
-            setKnowledgeBaseFileName(storedKbName || '사용자 정의 지식 베이스');
-            setKnowledgeBaseMimeType(storedKbMime || 'application/pdf');
+
+        if (storedKbFiles) {
+            try {
+                setKnowledgeBaseFiles(JSON.parse(storedKbFiles));
+            } catch (e) {
+                console.error("Failed to parse stored KB files", e);
+            }
+        } else {
+            // Migration
+            const storedKbContent = localStorage.getItem('autonomy_knowledge_base_content');
+            const storedKbName = localStorage.getItem('autonomy_knowledge_base_name');
+            const storedKbMime = localStorage.getItem('autonomy_knowledge_base_mime');
+
+            if (storedKbContent) {
+                const legacyFile: UploadedFile = {
+                    name: storedKbName || '사용자 정의 지식 베이스',
+                    type: storedKbMime || 'application/pdf',
+                    data: storedKbContent,
+                    category: 'knowledge'
+                };
+                setKnowledgeBaseFiles([legacyFile]);
+                localStorage.setItem('autonomy_knowledge_base_files', JSON.stringify([legacyFile]));
+            }
+        }
+
+        if (storedSubjectName) {
             setCustomSubjectName(storedSubjectName);
         }
     }, []);
@@ -60,29 +79,20 @@ const AutonomyApp: React.FC = () => {
     };
 
     const handleKnowledgeBaseUpload = (files: UploadedFile[]) => {
-        if (files.length > 0) {
-            const file = files[0];
-
-            setKnowledgeBaseContent(file.data);
-            setKnowledgeBaseFileName(file.name);
-            setKnowledgeBaseMimeType(file.type);
-
-            localStorage.setItem('autonomy_knowledge_base_content', file.data);
-            localStorage.setItem('autonomy_knowledge_base_name', file.name);
-            localStorage.setItem('autonomy_knowledge_base_mime', file.type);
-        }
+        setKnowledgeBaseFiles(files);
+        localStorage.setItem('autonomy_knowledge_base_files', JSON.stringify(files));
     };
 
     const handleResetKnowledgeBase = () => {
-        setKnowledgeBaseContent(null);
-        setKnowledgeBaseFileName(null);
-        setKnowledgeBaseMimeType('application/pdf');
+        setKnowledgeBaseFiles([]);
         setCustomSubjectName(null);
+
+        localStorage.removeItem('autonomy_knowledge_base_files');
+        localStorage.removeItem('autonomy_custom_subject_name');
 
         localStorage.removeItem('autonomy_knowledge_base_content');
         localStorage.removeItem('autonomy_knowledge_base_name');
         localStorage.removeItem('autonomy_knowledge_base_mime');
-        localStorage.removeItem('autonomy_custom_subject_name');
     };
 
     // Handlers
@@ -103,10 +113,10 @@ const AutonomyApp: React.FC = () => {
         setIsGenerating(true);
 
         try {
-            let finalKnowledgeBase = knowledgeBaseContent ? {
-                data: knowledgeBaseContent,
-                mimeType: knowledgeBaseMimeType
-            } : undefined;
+            let finalKnowledgeBase = knowledgeBaseFiles.length > 0 ? knowledgeBaseFiles.map(f => ({
+                data: f.data,
+                mimeType: f.type
+            })) : undefined;
 
             let finalDraftText = draftText;
 
@@ -127,10 +137,10 @@ const AutonomyApp: React.FC = () => {
                         });
 
                         // Override Knowledge Base
-                        finalKnowledgeBase = {
+                        finalKnowledgeBase = [{
                             data: base64,
                             mimeType: 'application/pdf' // Explicitly set PDF
-                        };
+                        }];
                     } else {
                         console.warn("Special PDF not found, proceeding with default.");
                     }
@@ -247,39 +257,33 @@ const AutonomyApp: React.FC = () => {
                             </div>
                         </div>
 
-                        {knowledgeBaseContent ? (
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="bg-green-100 p-2 rounded-full">
-                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-bold text-green-800 truncate">{knowledgeBaseFileName}</p>
-                                        <p className="text-xs text-green-600">사용자 정의 지식 베이스 적용 중</p>
-                                    </div>
-                                </div>
+                        {knowledgeBaseFiles.length > 0 && (
+                            <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                <span className="text-sm font-bold text-green-700">
+                                    {knowledgeBaseFiles.length}개의 지식 베이스 파일이 적용 중입니다.
+                                </span>
                                 <button
                                     onClick={handleResetKnowledgeBase}
-                                    className="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded transition-colors"
+                                    className="ml-auto text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-colors"
                                 >
                                     초기화
                                 </button>
                             </div>
-                        ) : (
-                            <FileUpload
-                                title="지식 베이스 파일"
-                                category="knowledge"
-                                accept=".pdf"
-                                files={[]}
-                                onFilesChange={handleKnowledgeBaseUpload}
-                                description={
-                                    <>
-                                        <span className="text-red-600 font-semibold">PDF파일</span>만 업로드 가능합니다.
-                                    </>
-                                }
-                                maxFiles={1}
-                            />
                         )}
+
+                        <FileUpload
+                            title="지식 베이스 파일"
+                            category="knowledge"
+                            accept=".pdf"
+                            files={knowledgeBaseFiles}
+                            onFilesChange={handleKnowledgeBaseUpload}
+                            description={
+                                <>
+                                    <span className="text-red-600 font-semibold">PDF파일</span>만 업로드 가능합니다.
+                                </>
+                            }
+                        />
                         <p className="text-xs text-slate-400 mt-3">
                             💡 업로드 시 브라우저에 저장되어 재방문 시에도 유지됩니다.
                         </p>

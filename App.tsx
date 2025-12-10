@@ -16,9 +16,8 @@ const App: React.FC = () => {
   const [gradeLevel, setGradeLevel] = useState<GradeLevel>(GradeLevel.GRADE_2);
 
   // Knowledge Base State
-  const [knowledgeBaseContent, setKnowledgeBaseContent] = useState<string | null>(null);
-  const [knowledgeBaseFileName, setKnowledgeBaseFileName] = useState<string | null>(null);
-  const [knowledgeBaseMimeType, setKnowledgeBaseMimeType] = useState<string>('application/pdf');
+  // Knowledge Base State
+  const [knowledgeBaseFiles, setKnowledgeBaseFiles] = useState<UploadedFile[]>([]);
   const [customSubjectName, setCustomSubjectName] = useState<string | null>(null);
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -36,14 +35,35 @@ const App: React.FC = () => {
       setApiKey(storedKey);
     }
 
-    const storedKbContent = localStorage.getItem('knowledge_base_content');
-    const storedKbName = localStorage.getItem('knowledge_base_name');
-    const storedKbMime = localStorage.getItem('knowledge_base_mime');
+    const storedKbFiles = localStorage.getItem('knowledge_base_files');
     const storedSubjectName = localStorage.getItem('custom_subject_name');
-    if (storedKbContent) {
-      setKnowledgeBaseContent(storedKbContent);
-      setKnowledgeBaseFileName(storedKbName || '사용자 정의 지식 베이스');
-      setKnowledgeBaseMimeType(storedKbMime || 'application/pdf');
+
+    if (storedKbFiles) {
+      try {
+        setKnowledgeBaseFiles(JSON.parse(storedKbFiles));
+      } catch (e) {
+        console.error("Failed to parse stored KB files", e);
+      }
+    } else {
+      // Migration: Check old single-file storage
+      const storedKbContent = localStorage.getItem('knowledge_base_content');
+      const storedKbName = localStorage.getItem('knowledge_base_name');
+      const storedKbMime = localStorage.getItem('knowledge_base_mime');
+
+      if (storedKbContent) {
+        const legacyFile: UploadedFile = {
+          name: storedKbName || '사용자 정의 지식 베이스',
+          type: storedKbMime || 'application/pdf',
+          data: storedKbContent,
+          category: 'knowledge'
+        };
+        setKnowledgeBaseFiles([legacyFile]);
+        // Save to new storage
+        localStorage.setItem('knowledge_base_files', JSON.stringify([legacyFile]));
+      }
+    }
+
+    if (storedSubjectName) {
       setCustomSubjectName(storedSubjectName);
     }
   }, []);
@@ -54,41 +74,21 @@ const App: React.FC = () => {
   };
 
   const handleKnowledgeBaseUpload = (files: UploadedFile[]) => {
-    if (files.length > 0) {
-      const file = files[0];
-      // Decode base64 if needed, but FileUpload usually gives base64 for images. 
-      // For text files, we might need to handle it carefully. 
-      // Assuming FileUpload component handles text reading or we need to decode.
-      // Let's assume 'data' is the content for text files based on how FileUpload usually works for text.
-      // If FileUpload returns base64 for everything, we need to decode.
-      // Let's check FileUpload implementation or assume standard text reading.
-      // Actually, looking at geminiService, it seems to expect raw text for text files or handles base64.
-      // Let's assume we store the raw text.
-
-      // Since FileUpload is a black box here, let's look at how it's used.
-      // It returns UploadedFile objects. 
-      // If it's a text file, we want the text content.
-
-      setKnowledgeBaseContent(file.data);
-      setKnowledgeBaseFileName(file.name);
-      setKnowledgeBaseMimeType(file.type);
-
-      localStorage.setItem('knowledge_base_content', file.data);
-      localStorage.setItem('knowledge_base_name', file.name);
-      localStorage.setItem('knowledge_base_mime', file.type);
-    }
+    setKnowledgeBaseFiles(files);
+    localStorage.setItem('knowledge_base_files', JSON.stringify(files));
   };
 
   const handleResetKnowledgeBase = () => {
-    setKnowledgeBaseContent(null);
-    setKnowledgeBaseFileName(null);
-    setKnowledgeBaseMimeType('application/pdf');
+    setKnowledgeBaseFiles([]);
     setCustomSubjectName(null);
 
+    localStorage.removeItem('knowledge_base_files');
+    localStorage.removeItem('custom_subject_name');
+
+    // Cleanup old keys
     localStorage.removeItem('knowledge_base_content');
     localStorage.removeItem('knowledge_base_name');
     localStorage.removeItem('knowledge_base_mime');
-    localStorage.removeItem('custom_subject_name');
   };
 
   // Handlers
@@ -114,10 +114,10 @@ const App: React.FC = () => {
         codeFiles,
         draftText,
         gradeLevel,
-        customKnowledgeBase: knowledgeBaseContent ? {
-          data: knowledgeBaseContent,
-          mimeType: knowledgeBaseMimeType
-        } : undefined,
+        customKnowledgeBase: knowledgeBaseFiles.length > 0 ? knowledgeBaseFiles.map(f => ({
+          data: f.data,
+          mimeType: f.type
+        })) : undefined,
         customSubjectName: customSubjectName || undefined
       }, apiKey);
       setResult(generatedData);
@@ -211,37 +211,13 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {knowledgeBaseContent ? (
-              <div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">교과명</label>
-                  <p className="text-sm text-slate-900 font-medium">{customSubjectName || '(교과명 미입력)'}</p>
-                </div>
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="bg-green-100 p-2 rounded-full">
-                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-green-800 truncate">{knowledgeBaseFileName}</p>
-                      <p className="text-xs text-green-600">사용자 정의 지식 베이스 적용 중</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleResetKnowledgeBase}
-                    className="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded transition-colors"
-                  >
-                    초기화
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="mb-4">
-                  <label className="block text-sm font-bold text-slate-700 mb-2">교과명 입력 (필수)</label>
+            <div>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-slate-700 mb-2">교과명 입력 (필수)</label>
+                <div className="flex gap-2">
                   <input
                     type="text"
-                    className="w-full p-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-shadow placeholder-slate-400"
+                    className="flex-1 p-3 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-shadow placeholder-slate-400"
                     placeholder="예: 수학, 영어, 과학, 정보 등"
                     value={customSubjectName || ''}
                     onChange={(e) => {
@@ -253,22 +229,39 @@ const App: React.FC = () => {
                       }
                     }}
                   />
+                  {knowledgeBaseFiles.length > 0 && (
+                    <button
+                      onClick={handleResetKnowledgeBase}
+                      className="bg-red-50 text-red-500 border border-red-200 px-4 rounded-lg text-sm font-bold hover:bg-red-100 transition-colors"
+                    >
+                      초기화
+                    </button>
+                  )}
                 </div>
-                <FileUpload
-                  title="지식 베이스 파일"
-                  category="knowledge"
-                  accept=".pdf"
-                  files={[]}
-                  onFilesChange={handleKnowledgeBaseUpload}
-                  description={
-                    <>
-                      <span className="text-red-600 font-semibold">PDF파일</span>만 업로드 가능합니다.
-                    </>
-                  }
-                  maxFiles={1}
-                />
               </div>
-            )}
+
+              {knowledgeBaseFiles.length > 0 && (
+                <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                  <span className="text-sm font-bold text-green-700">
+                    {knowledgeBaseFiles.length}개의 지식 베이스 파일이 적용 중입니다.
+                  </span>
+                </div>
+              )}
+
+              <FileUpload
+                title="지식 베이스 파일"
+                category="knowledge"
+                accept=".pdf"
+                files={knowledgeBaseFiles}
+                onFilesChange={handleKnowledgeBaseUpload}
+                description={
+                  <>
+                    <span className="text-red-600 font-semibold">PDF파일</span>만 업로드 가능합니다.
+                  </>
+                }
+              />
+            </div>
             <p className="text-xs text-slate-400 mt-3">
               💡 업로드 시 브라우저에 저장되어 재방문 시에도 유지됩니다.
             </p>

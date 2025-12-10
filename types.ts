@@ -33,7 +33,7 @@ export interface GenerationParams {
   customKnowledgeBase?: {
     data: string;
     mimeType: string;
-  };
+  }[];
   customSubjectName?: string;
   recordType?: RecordType;
 }
