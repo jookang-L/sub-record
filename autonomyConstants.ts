@@ -2,11 +2,16 @@
 import { GradeLevel, RecordType } from "./types";
 
 export const getAutonomySystemInstruction = (recordType: RecordType, subjectName: string = "정보") => {
-    const charLimits = recordType === RecordType.AUTONOMY
-        ? { grade1: 650, grade2: 550, grade3: 450 }
-        : { grade1: 850, grade2: 750, grade3: 650 };
+    const charLimits = {
+        grade1: { min: 1450, max: 1500 },
+        grade2: { min: 1300, max: 1400 },
+        grade3: { min: 1000, max: 1300 },
+    };
 
-    const activityType = recordType === RecordType.AUTONOMY ? "자율활동" : "진로활동";
+    let activityType = "자율활동";
+    if (recordType === RecordType.CAREER) activityType = "진로활동";
+    else if (recordType === RecordType.CLUB) activityType = "동아리 활동";
+    else if (recordType === RecordType.BEHAVIOR) activityType = "행동특성 및 종합의견";
 
     return `
 [역할]
@@ -19,10 +24,11 @@ ${activityType} 기록은 교사가 학생들의 활동을 관찰하여 기록�
 2. **성취기준 번호 절대 금지**: 교육과정 성취기준 코드(예: [12정01-01], [12인기03-02])를 텍스트에 절대 포함하지 마시오.
 3. **괄호() 사용 절대 금지**: 텍스트에 괄호 '()'를 절대 포함하지 마시오. 보충 설명이 필요한 경우 쉼표나 공백으로 구분하시오.
 4. **따옴표 사용 최소화**: 작은따옴표나 큰따옴표는 활동명, 프로젝트명 등 특별한 경우에만 사용하고, 그 외에는 사용하지 마시오.
-5. **글자 수 제한 엄수 (공백 포함)**: 각 등급별로 설정된 한계선을 절대 초과하지 마시오.
-   - 1등급: ${charLimits.grade1}자 이내
-   - 2등급: ${charLimits.grade2}자 이내
-   - 3등급: ${charLimits.grade3}자 이내
+5. **글자 수(바이트) 제한 엄수**: 각 등급별 목표 범위를 절대 벗어나지 마시오.
+   - 1등급: ${charLimits.grade1.min}~${charLimits.grade1.max}byte
+   - 2등급: ${charLimits.grade2.min}~${charLimits.grade2.max}byte
+   - 3등급: ${charLimits.grade3.min}~${charLimits.grade3.max}byte
+   *글자 수 산정 규칙: 숫자/영어/공백/특수문자/줄바꿈은 1byte, 한글(자음/모음 포함)은 3byte로 계산한다. 예시) "김개똥은 책임감이 강하고 협업을 잘함." = 한글 48byte + 공백 4byte + 마침표 1byte = 53byte.
    *만약 내용이 길어지면 수식어를 삭제해서라도 무조건 이 제한을 맞추시오.
 6. **섹션 헤더 포함 금지**: '활동 동기', '활동 과정', '활동 결과', '평가 및 피드백' 등의 단어를 텍스트에 직접 포함하지 마시오. 내용은 이 흐름을 따르되, 소제목이나 구분자 없이 줄글로 자연스럽게 이어지도록 작성하시오.
 
@@ -35,15 +41,20 @@ ${activityType} 기록은 교사가 학생들의 활동을 관찰하여 기록�
 학교 생활기록부 작성 규정을 준수하며, 활동 과정과 평가 사이의 인과관계, 진로 연계성을 명확히 한다.
 
 [등급별 작성 기준]
-- 1등급: 핵심 역량과 구체적 성과 위주의 고밀도 텍스트. (글자수: ${charLimits.grade1}자 절대 엄수)
-- 2등급: 활동 내용과 적절한 평가 포함. (글자수: ${charLimits.grade2}자 절대 엄수)
-- 3등급: 핵심 활동 위주, 요약된 평가. (글자수: ${charLimits.grade3}자 절대 엄수)
+- 1등급: 핵심 역량과 구체적 성과 위주의 고밀도 텍스트. (글자수: ${charLimits.grade1.min}~${charLimits.grade1.max}byte 엄수)
+- 2등급: 활동 내용과 적절한 평가 포함. (글자수: ${charLimits.grade2.min}~${charLimits.grade2.max}byte 엄수)
+- 3등급: 핵심 활동 위주, 요약된 평가. (글자수: ${charLimits.grade3.min}~${charLimits.grade3.max}byte 엄수)
 
 [문장 구성 및 표현 규칙]
 1. 관점: 교사 입장, 객관적 관찰 중심 (예: "파악함", "주목함"). 학생의 내면(깨달았다, 느꼈다) 서술 금지.
 2. 구조: 원인(활동) -> 결과(평가).
 3. 표현: 전문 용어 정확 표기, 활동명/주제명 작은따옴표. 영문 소문자 표기. 종결 어미 "~함", "~보임".
-4. 내용 구성 흐름 (단, 헤더 텍스트는 출력 금지):
+4. **문장 간 자연스러운 연결 (매우 중요)**:
+   - 단순 나열 금지: "~구현함. 물건 이름과~" (X)
+   - 연결어 활용: "~구현함. 이를 바탕으로 물건 이름과~" (O)
+   - 자주 사용할 연결어: '이는', '특히', '또한', '이를 통해', '나아가', '이를 바탕으로', '더불어'
+   - 문단 전체가 자연스러운 흐름을 가지도록 작성
+5. 내용 구성 흐름 (단, 헤더 텍스트는 출력 금지):
    - (동기) 계기 -> 주제
    - (과정) 자료 수집, 도구, 방법, 절차 (보고서 내용 반영)
    - (결과) 개념 이해, 결과 도출, 제언/향후 연구 필요성 필수 포함.
@@ -53,7 +64,7 @@ ${activityType} 기록은 교사가 학생들의 활동을 관찰하여 기록�
 응답은 반드시 아래의 JSON 포맷으로만 출력해야 한다. 마크다운 코드 블록 없이 순수 JSON 문자열만 반환하라.
 
 {
-  "gradeVersion": "사용자가 선택한 등급 기준 글자 수 제한을 완벽히 준수한 텍스트"
+  "gradeVersion": "사용자가 선택한 등급 기준 글자 수(바이트 규칙: 한글 3byte, 그 외 1byte) 범위를 완벽히 준수한 텍스트"
 }
 `;
 };
@@ -61,13 +72,23 @@ ${activityType} 기록은 교사가 학생들의 활동을 관찰하여 기록�
 
 export const AUTONOMY_GRADE_DESCRIPTIONS: Record<RecordType, Record<GradeLevel, string>> = {
     [RecordType.AUTONOMY]: {
-        [GradeLevel.GRADE_1]: "매우 상세, 풍부한 평가 (650자 이내)",
-        [GradeLevel.GRADE_2]: "적절히 구체적, 적절한 평가 (550자 이내)",
-        [GradeLevel.GRADE_3]: "핵심 활동 위주, 요약된 평가 (450자 이내)",
+        [GradeLevel.GRADE_1]: "매우 상세, 풍부한 평가 (1450~1500byte)",
+        [GradeLevel.GRADE_2]: "적절히 구체적, 적절한 평가 (1300~1400byte)",
+        [GradeLevel.GRADE_3]: "핵심 활동 위주, 요약된 평가 (1000~1300byte)",
     },
     [RecordType.CAREER]: {
-        [GradeLevel.GRADE_1]: "매우 상세, 풍부한 평가 (850자 이내)",
-        [GradeLevel.GRADE_2]: "적절히 구체적, 적절한 평가 (750자 이내)",
-        [GradeLevel.GRADE_3]: "핵심 활동 위주, 요약된 평가 (650자 이내)",
+        [GradeLevel.GRADE_1]: "매우 상세, 풍부한 평가 (1450~1500byte)",
+        [GradeLevel.GRADE_2]: "적절히 구체적, 적절한 평가 (1300~1400byte)",
+        [GradeLevel.GRADE_3]: "핵심 활동 위주, 요약된 평가 (1000~1300byte)",
+    },
+    [RecordType.CLUB]: {
+        [GradeLevel.GRADE_1]: "매우 상세, 풍부한 평가 (1450~1500byte)",
+        [GradeLevel.GRADE_2]: "적절히 구체적, 적절한 평가 (1300~1400byte)",
+        [GradeLevel.GRADE_3]: "핵심 활동 위주, 요약된 평가 (1000~1300byte)",
+    },
+    [RecordType.BEHAVIOR]: {
+        [GradeLevel.GRADE_1]: "매우 상세, 풍부한 평가 (1450~1500byte)",
+        [GradeLevel.GRADE_2]: "적절히 구체적, 적절한 평가 (1300~1400byte)",
+        [GradeLevel.GRADE_3]: "핵심 활동 위주, 요약된 평가 (1000~1300byte)",
     },
 };

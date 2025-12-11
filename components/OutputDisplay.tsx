@@ -154,11 +154,34 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey, historyIt
     );
   }
 
+  // 바이트 계산 함수: 한글 3byte, 그 외 1byte
+  const calculateByteSize = (text: string): number => {
+    let bytes = 0;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      // 한글 유니코드 범위: 0xAC00-0xD7AF (완성형), 0x1100-0x11FF (자음/모음)
+      const code = char.charCodeAt(0);
+      if ((code >= 0xAC00 && code <= 0xD7AF) || (code >= 0x1100 && code <= 0x11FF)) {
+        bytes += 3; // 한글
+      } else {
+        bytes += 1; // 그 외 (숫자, 영문, 공백, 특수문자 등)
+      }
+    }
+    return bytes;
+  };
+
+  const BYTE_WARNING_LIMIT = 1500;
+
+  // 글자 수 계산
   const aiCharCount = displayedContent.replace(/\s/g, '').length;
   const aiCharCountWithSpace = displayedContent.length;
+  const aiByteCount = calculateByteSize(displayedContent);
+  const aiByteCountNoSpace = calculateByteSize(displayedContent.replace(/\s/g, ''));
 
   const userCharCount = userEditedContent.replace(/\s/g, '').length;
   const userCharCountWithSpace = userEditedContent.length;
+  const userByteCount = calculateByteSize(userEditedContent);
+  const userByteCountNoSpace = calculateByteSize(userEditedContent.replace(/\s/g, ''));
 
   const handleCopyAI = () => {
     navigator.clipboard.writeText(displayedContent);
@@ -241,8 +264,10 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey, historyIt
           </div>
           <div className="px-4 py-2 border-t border-slate-200 bg-white flex justify-between items-center">
             <div className="text-xs text-slate-500 font-mono">
-              <span className={`font-semibold ${aiCharCountWithSpace > 750 ? 'text-red-500' : 'text-slate-700'}`}>{aiCharCountWithSpace}자</span> (공백포함) &middot;
-              <span className="ml-1">{aiCharCount}자</span> (공백제외)
+              <span className={`font-semibold ${aiByteCount > BYTE_WARNING_LIMIT ? 'text-red-500' : 'text-slate-700'}`}>{aiByteCount}byte</span> (공백 포함) &middot;
+              <span className="ml-1">{aiByteCountNoSpace}byte</span> (공백 제외) &middot;
+              <span className="ml-1">{aiCharCountWithSpace}자</span> (공백 포함) &middot;
+              <span className="ml-1">{aiCharCount}자</span> (공백 제외)
             </div>
             <button
               onClick={handleCopyAI}
@@ -281,8 +306,10 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey, historyIt
           </div>
           <div className="px-4 py-2 border-t border-slate-200 bg-white flex justify-between items-center">
             <div className="text-xs text-slate-500 font-mono">
-              <span className={`font-semibold ${userCharCountWithSpace > 750 ? 'text-red-500' : 'text-slate-700'}`}>{userCharCountWithSpace}자</span> (공백포함) &middot;
-              <span className="ml-1">{userCharCount}자</span> (공백제외)
+              <span className={`font-semibold ${userByteCount > BYTE_WARNING_LIMIT ? 'text-red-500' : 'text-slate-700'}`}>{userByteCount}byte</span> (공백 포함) &middot;
+              <span className="ml-1">{userByteCountNoSpace}byte</span> (공백 제외) &middot;
+              <span className="ml-1">{userCharCountWithSpace}자</span> (공백 포함) &middot;
+              <span className="ml-1">{userCharCount}자</span> (공백 제외)
             </div>
             <div className="flex gap-2">
               <button
