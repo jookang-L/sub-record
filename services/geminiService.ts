@@ -73,7 +73,7 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
     // Load each PDF file from public folder
     for (const pdfFile of pdfFiles) {
       try {
-        const response = await fetch(`/public/${pdfFile}`);
+        const response = await fetch(`/${pdfFile}`);
         if (response.ok) {
           const blob = await response.blob();
           const base64 = await new Promise<string>((resolve) => {

@@ -351,8 +351,10 @@ const BehaviorApp: React.FC = () => {
                     }}
                     onDeleteHistory={removeFromHistory}
                     onUpdateHistory={(updates) => {
-                        if (currentHistoryId) {
-                            updateHistoryItem(currentHistoryId, { result: { ...result!, ...updates } });
+                        if (currentHistoryId && result) {
+                            const updatedResult = { ...result, ...updates };
+                            setResult(updatedResult);
+                            updateHistoryItem(currentHistoryId, { result: updatedResult });
                         }
                     }}
                 />

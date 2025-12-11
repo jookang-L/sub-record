@@ -4,6 +4,7 @@ import { Copy, Check, FileOutput, ArrowLeft, Wand2, Loader2, History, Clock } fr
 import { GeneratedResult, HistoryItem } from '../types';
 import { checkSpelling } from '../services/geminiService';
 import HistorySidebar from './HistorySidebar';
+import { neisByteLength } from '../utils/byteCalculator';
 
 interface OutputDisplayProps {
   result: GeneratedResult | null;
@@ -154,34 +155,18 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey, historyIt
     );
   }
 
-  // 바이트 계산 함수: 한글 3byte, 그 외 1byte
-  const calculateByteSize = (text: string): number => {
-    let bytes = 0;
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      // 한글 유니코드 범위: 0xAC00-0xD7AF (완성형), 0x1100-0x11FF (자음/모음)
-      const code = char.charCodeAt(0);
-      if ((code >= 0xAC00 && code <= 0xD7AF) || (code >= 0x1100 && code <= 0x11FF)) {
-        bytes += 3; // 한글
-      } else {
-        bytes += 1; // 그 외 (숫자, 영문, 공백, 특수문자 등)
-      }
-    }
-    return bytes;
-  };
-
   const BYTE_WARNING_LIMIT = 1500;
 
-  // 글자 수 계산
+  // 글자 수 및 바이트 계산
   const aiCharCount = displayedContent.replace(/\s/g, '').length;
   const aiCharCountWithSpace = displayedContent.length;
-  const aiByteCount = calculateByteSize(displayedContent);
-  const aiByteCountNoSpace = calculateByteSize(displayedContent.replace(/\s/g, ''));
+  const aiByteCount = neisByteLength(displayedContent);
+  const aiByteCountNoSpace = neisByteLength(displayedContent.replace(/\s/g, ''));
 
   const userCharCount = userEditedContent.replace(/\s/g, '').length;
   const userCharCountWithSpace = userEditedContent.length;
-  const userByteCount = calculateByteSize(userEditedContent);
-  const userByteCountNoSpace = calculateByteSize(userEditedContent.replace(/\s/g, ''));
+  const userByteCount = neisByteLength(userEditedContent);
+  const userByteCountNoSpace = neisByteLength(userEditedContent.replace(/\s/g, ''));
 
   const handleCopyAI = () => {
     navigator.clipboard.writeText(displayedContent);
