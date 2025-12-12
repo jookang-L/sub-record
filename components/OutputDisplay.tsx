@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Copy, Check, FileOutput, ArrowLeft, Wand2, Loader2, History, Clock } from 'lucide-react';
+import { Copy, Check, FileOutput, ArrowLeft, Wand2, Loader2, History, Clock, Minimize2 } from 'lucide-react';
 import { GeneratedResult, HistoryItem } from '../types';
-import { checkSpelling } from '../services/geminiService';
+import { checkSpelling, summarizeText } from '../services/geminiService';
 import HistorySidebar from './HistorySidebar';
-import { neisByteLength } from '../utils/byteCalculator';
 
 interface OutputDisplayProps {
   result: GeneratedResult | null;
@@ -25,6 +24,7 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey, historyIt
   const [displayedContent, setDisplayedContent] = useState<string>('');
   const [userEditedContent, setUserEditedContent] = useState<string>('');
   const [isCheckingSpelling, setIsCheckingSpelling] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
 
   // Check if current user content is different from original result content
   const hasChanges = result && userEditedContent !== result[activeTab];
@@ -117,6 +117,25 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey, historyIt
     }
   };
 
+  const handleSummarize = async (targetLength: number) => {
+    if (!userEditedContent) return;
+    if (!apiKey) {
+      alert("API 키가 설정되지 않았습니다. 왼쪽 상단의 열쇠 아이콘을 눌러 키를 설정해주세요.");
+      return;
+    }
+
+    setIsSummarizing(true);
+    try {
+      const summarized = await summarizeText(userEditedContent, targetLength, apiKey);
+      setUserEditedContent(summarized);
+    } catch (error) {
+      console.error("Summarization failed", error);
+      alert("축약 중 오류가 발생했습니다.");
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
   if (!result) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8 border-l border-slate-200 bg-slate-50/50 relative">
@@ -155,18 +174,14 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey, historyIt
     );
   }
 
-  const BYTE_WARNING_LIMIT = 1500;
+  const CHAR_WARNING_LIMIT = 650;
 
-  // 글자 수 및 바이트 계산
+  // 글자 수 계산 (공백 포함/미포함)
   const aiCharCount = displayedContent.replace(/\s/g, '').length;
   const aiCharCountWithSpace = displayedContent.length;
-  const aiByteCount = neisByteLength(displayedContent);
-  const aiByteCountNoSpace = neisByteLength(displayedContent.replace(/\s/g, ''));
 
   const userCharCount = userEditedContent.replace(/\s/g, '').length;
   const userCharCountWithSpace = userEditedContent.length;
-  const userByteCount = neisByteLength(userEditedContent);
-  const userByteCountNoSpace = neisByteLength(userEditedContent.replace(/\s/g, ''));
 
   const handleCopyAI = () => {
     navigator.clipboard.writeText(displayedContent);
@@ -249,9 +264,7 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey, historyIt
           </div>
           <div className="px-4 py-2 border-t border-slate-200 bg-white flex justify-between items-center">
             <div className="text-xs text-slate-500 font-mono">
-              <span className={`font-semibold ${aiByteCount > BYTE_WARNING_LIMIT ? 'text-red-500' : 'text-slate-700'}`}>{aiByteCount}byte</span> (공백 포함) &middot;
-              <span className="ml-1">{aiByteCountNoSpace}byte</span> (공백 제외) &middot;
-              <span className="ml-1">{aiCharCountWithSpace}자</span> (공백 포함) &middot;
+              <span className={`font-semibold ${aiCharCountWithSpace > CHAR_WARNING_LIMIT ? 'text-red-500' : 'text-slate-700'}`}>{aiCharCountWithSpace}자</span> (공백 포함) &middot;
               <span className="ml-1">{aiCharCount}자</span> (공백 제외)
             </div>
             <button
@@ -291,12 +304,22 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ result, apiKey, historyIt
           </div>
           <div className="px-4 py-2 border-t border-slate-200 bg-white flex justify-between items-center">
             <div className="text-xs text-slate-500 font-mono">
-              <span className={`font-semibold ${userByteCount > BYTE_WARNING_LIMIT ? 'text-red-500' : 'text-slate-700'}`}>{userByteCount}byte</span> (공백 포함) &middot;
-              <span className="ml-1">{userByteCountNoSpace}byte</span> (공백 제외) &middot;
-              <span className="ml-1">{userCharCountWithSpace}자</span> (공백 포함) &middot;
+              <span className={`font-semibold ${userCharCountWithSpace > CHAR_WARNING_LIMIT ? 'text-red-500' : 'text-slate-700'}`}>{userCharCountWithSpace}자</span> (공백 포함) &middot;
               <span className="ml-1">{userCharCount}자</span> (공백 제외)
             </div>
             <div className="flex gap-2">
+              {/* 축약 버튼 - 글자 수 초과 시 표시 */}
+              {userCharCountWithSpace > CHAR_WARNING_LIMIT && (
+                <button
+                  onClick={() => handleSummarize(CHAR_WARNING_LIMIT)}
+                  disabled={isSummarizing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-white bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 transition-all shadow-sm hover:shadow-md"
+                  title={`${CHAR_WARNING_LIMIT}자 이하로 축약 (5-10초 소요)`}
+                >
+                  {isSummarizing ? <Loader2 size={14} className="animate-spin" /> : <Minimize2 size={14} />}
+                  {isSummarizing ? '축약 중...' : `${CHAR_WARNING_LIMIT}자로 축약`}
+                </button>
+              )}
               <button
                 onClick={handleSpellCheck}
                 disabled={isCheckingSpelling}

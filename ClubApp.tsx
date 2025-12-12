@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, AlertCircle, Loader2, Key } from 'lucide-react';
+import { ArrowRight, AlertCircle, Loader2, Key, Info } from 'lucide-react';
 import FileUpload from './components/FileUpload';
 import OutputDisplay from './components/OutputDisplay';
 import ApiKeyInput from './components/ApiKeyInput';
@@ -325,7 +325,17 @@ const ClubApp: React.FC = () => {
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-bold text-slate-700 mb-2">목표 등급 설정</label>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="block text-sm font-bold text-slate-700">목표 등급 설정</label>
+                <div className="relative group">
+                  <Info size={16} className="text-slate-400 hover:text-blue-500 cursor-help transition-colors" />
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-slate-800 text-white text-xs px-3 py-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg z-50 w-64">
+                    ⚠️ Gemini의 한계로 글자 수가 초과될 수 있습니다.<br />
+                    초과 시 우측 하단의 <span className="font-bold text-orange-300">'축약'</span> 버튼을 눌러주세요.
+                    <div className="absolute top-1/2 left-[-4px] -translate-y-1/2 border-y-[4px] border-y-transparent border-r-[4px] border-r-slate-800"></div>
+                  </div>
+                </div>
+              </div>
               <div className="space-y-3">
                 {Object.values(GradeLevel).map((grade) => (
                   <div

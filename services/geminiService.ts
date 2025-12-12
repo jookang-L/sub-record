@@ -27,7 +27,7 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
   if (params.customKnowledgeBase && params.customKnowledgeBase.length > 0) {
     // Only PDF files are supported for custom knowledge base (but array is allowed now)
     parts.push({
-      text: `[지식 베이스: 사용자 정의 참조 자료]\\n작성 시 다음 파일들의 내용을 반드시 참고하시오.`
+      text: `[지식 베이스: 사용자 정의 참조 자료]\n아래 파일 내용 참고하여 작성.`
     });
 
     params.customKnowledgeBase.forEach((kbFile) => {
@@ -60,14 +60,12 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
         '자율 (1).pdf',
         '자율 (2).pdf',
         '진로 (1).pdf',
-        '진로 (2).pdf',
-        '진로 (3).pdf',
-        '진로 (4).pdf'
+        '진로 (2).pdf'
       ];
     }
 
     parts.push({
-      text: `[지식 베이스: 기본 참조 자료 (${params.recordType} 활동)]\\n작성 시 다음 PDF 파일들의 내용과 문체를 반드시 참고하시오.`
+      text: `[지식 베이스: ${params.recordType} 활동 참조 자료]\n아래 PDF 파일들의 문체 참고.`
     });
 
     // Load each PDF file from public folder
@@ -99,18 +97,15 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
   } else {
     // Default for subject pages (교과세특)
     parts.push({
-      text: `
-      [지식 베이스: 고정 참조 자료]
-      작성 시 다음의 교육과정 성취기준과 우수 사례를 반드시 참고하시오.
-      단, **성취기준 번호(예: [12정02-04])는 절대 출력물에 포함하지 마십시오.** 내용은 녹여내되 코드는 표기하지 마십시오.
-      이 데이터베이스에 있는 문체와 평가 방식(구체적 알고리즘 명시, 데이터 출처 언급, 문제해결 과정 서술 등)을 철저히 벤치마킹하여 작성할 것.
-      
-      ${CURRICULUM_INFORMATICS}
-      
-      ${CURRICULUM_AI_BASICS}
-      
-      ${STUDENT_RECORD_EXAMPLES}
-      `
+      text: `[지식 베이스: 교육과정 성취기준 및 우수 세특 예시]
+아래 자료의 문체와 평가 방식을 참고하여 작성. 성취기준 번호는 출력하지 말 것.
+
+${CURRICULUM_INFORMATICS}
+
+${CURRICULUM_AI_BASICS}
+
+${STUDENT_RECORD_EXAMPLES}
+`
     });
   }
 
@@ -137,66 +132,72 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
     });
   });
 
-  // Determine Byte Limit Strategy (바이트 기준: 한글 3byte, 그 외 1byte)
-  // 모든 페이지 공통: 1등급 1450~1500, 2등급 1300~1400, 3등급 1000~1300
-  let limitMin = 1000;
-  let limitMax = 1500;
+  // Determine Character Limit (공백 포함 글자 수)
+  // 모든 페이지 공통: 1등급 600~650자, 2등급 500~600자, 3등급 400~500자
+  let limitMin = 400;
+  let limitMax = 650;
   let strictLimitMsg = "";
 
   switch (params.gradeLevel) {
     case GradeLevel.GRADE_1:
-      limitMin = 1450;
-      limitMax = 1500;
+      limitMin = 600;
+      limitMax = 650;
       break;
     case GradeLevel.GRADE_2:
-      limitMin = 1300;
-      limitMax = 1400;
+      limitMin = 500;
+      limitMax = 600;
       break;
     case GradeLevel.GRADE_3:
-      limitMin = 1000;
-      limitMax = 1300;
+      limitMin = 400;
+      limitMax = 500;
       break;
     default:
-      limitMin = 1450;
-      limitMax = 1500;
+      limitMin = 600;
+      limitMax = 650;
   }
 
-  strictLimitMsg = `🚨🚨🚨 절대 규칙 (최우선 준수) 🚨🚨🚨
-반드시 ${limitMin}~${limitMax}byte 범위 내에서 작성하시오.
-• 바이트 계산: 한글(자음/모음 포함)=3byte, 숫자/영문/공백/특수문자/줄바꿈=1byte
-• 예시: "김개똥은 책임감이 강하고 협업을 잘함." = 한글48 + 공백4 + 마침표1 = 53byte
-• ${limitMax}byte를 1byte라도 초과하면 절대 안 됨!
-• 만약 초과할 것 같으면 수식어, 부사, 형용사를 삭제하시오.
-• 내용이 부족해 보여도 ${limitMin}byte 이상만 되면 괜찮음.`;
+  strictLimitMsg = `글자 수 ${limitMin}~${limitMax}자 (공백 포함) 절대 엄수. 범위 벗어나면 반드시 조정.`;
 
   // 4. Add User Inputs & Final Constraints
+  // 등급별 분량 설명
+  const volumeDesc = params.gradeLevel === GradeLevel.GRADE_1 
+    ? "충분히 상세하고 풍부한 내용" 
+    : params.gradeLevel === GradeLevel.GRADE_2 
+    ? "적절히 구체적인 내용"
+    : "핵심 위주의 간결한 내용";
+
   let promptText = `
-    [사용자 입력 정보]
-    1. 희망 등급: ${params.gradeLevel}
-    ${params.customSubjectName ? `2. 활동 분야/교과명: ${params.customSubjectName}` : ''}
-    ${params.customSubjectName ? '3' : '2'}. 1차 교과세특 초안 및 메모:
-    ${params.draftText || "(없음. 보고서와 코드를 바탕으로 새로 작성)"}
-    
-    [★★최종 생성 전 필수 검증(Sanity Check)★★]
-    텍스트를 생성하기 직전에 다음 규칙을 적용하여 스스로 내용을 수정하시오:
-    1. ❌ **이름 및 지칭 삭제**: 텍스트에 학생 이름(예: 홍길동)이 포함되어 있다면 무조건 삭제하시오. **'위 학생은', '해당 학생은', '학습자는', '학생은' 등의 표현도 절대 남기지 마시오.** (주어 생략 권장)
-    2. ❌ **성취기준 코드 삭제**: 텍스트에 [12정01-01] 같은 코드가 있다면 무조건 삭제하시오.
-    3. ❌ **괄호() 사용 금지**: 텍스트에 괄호 '()'가 있다면 삭제하거나 다른 표현으로 바꾸시오. **단, 날짜 표기(예: (2025.12.09.))를 위한 괄호는 허용하며 절대 삭제하지 마시오.** 그 외 '딕셔너리(item)' 같은 표현은 '딕셔너리 item'으로 변경하시오.
-    4. ❌ **따옴표 사용 최소화**: 작은따옴표나 큰따옴표는 교과명, 프로젝트명 등 특별한 경우에만 사용하고, 그 외에는 사용하지 마시오.
-    5. ❌ **바이트 수 조절 (문맥 자연스러움 필수)**: 
-       👉 ${strictLimitMsg}
-       
-       ⚠️ 바이트 초과 시 조절 방법 (반드시 이 순서로):
-       1️⃣ **문맥 유지하며 구조 재구성**: 단순 나열 문장을 통합하고 연결어로 자연스럽게 연결
-          • 나쁜 예: "~구현함. 입력된 물건들을~" (연결어 없음, 단순 나열)
-          • 좋은 예: "~구현함. 이를 바탕으로 입력된 물건들을~" (연결어로 자연스러운 흐름)
-          • 연결어 활용: '이는', '특히', '또한', '이를 통해', '나아가', '이를 바탕으로' 등
-       2️⃣ **불필요한 수식어만 제거**: 문맥에 영향 없는 형용사, 부사만 조심스럽게 삭제
-       3️⃣ **최종 검토**: 전체를 읽어보고 논리적 흐름과 문장 간 연결이 자연스러운지 확인
-       4️⃣ **${limitMin}~${limitMax}byte 범위 확인**: 최종 바이트가 범위 내인지 검증
-    6. ❌ **섹션 헤더 삭제**: '탐구 동기', '탐구 과정', '탐구 결과', '평가 및 피드백' 등의 단어가 포함되어 있다면 삭제하고 자연스러운 줄글로 이으시오.
-    
-    위 규칙을 완벽히 지킨 최종 결과만 JSON으로 출력하시오.
+[사용자 입력 정보]
+- 희망 등급: ${params.gradeLevel} (${volumeDesc})
+${params.customSubjectName ? `- 활동 분야/교과명: ${params.customSubjectName}` : ''}
+- 1차 초안 및 메모: ${params.draftText || "(없음. 보고서와 코드를 바탕으로 작성)"}
+
+[목표 분량 - 절대 필수]
+전체 텍스트는 반드시 정확히 ${limitMin}~${limitMax}자 (공백 포함)로 작성해야 함.
+- 최소: ${limitMin}자 (이보다 짧으면 안 됨)
+- 최대: ${limitMax}자 (이보다 길면 안 됨)
+- 참고: 대략 A4 용지 ${(limitMin/350).toFixed(1)}~${(limitMax/350).toFixed(1)}줄 분량
+- 완성 후 반드시 글자 수를 세어 범위 내인지 확인할 것
+- 범위 벗어나면 반드시 수정하여 범위 내로 맞출 것
+
+[문장 작성 규칙 - 필수]
+1. 종결어미: 모든 문장은 '-함', '-보임', '-임'으로만 끝낼 것. '-합니다', '-입니다' 절대 금지.
+
+2. 문장 길이: 짧은 문장 금지. 2-3개 절을 연결하여 길게 작성.
+   나쁜 예: "이는 문제 해결력을 보여줌. 창의적 접근을 보임."
+   좋은 예: "이는 문제 해결력을 보여줌과 동시에 창의적 접근 방식을 엿볼 수 있었음."
+   연결 표현: '~과 동시에', '~한편', '~뿐만 아니라', '~더불어'
+
+3. 문장 간 연결: 문장 사이에 연결어 필수 사용.
+   연결어: '이 과정에서', '따라서', '나아가', '이는', '특히', '이를 통해', '이를 바탕으로'
+
+[최종 검증 - 반드시 확인]
+✓ 전체 글자 수: 정확히 ${limitMin}~${limitMax}자인가? (공백 포함)
+✓ 모든 문장: '-함', '-보임', '-임'으로 끝나는가?
+✓ 문장 길이: 충분히 길고 여러 절을 포함하는가?
+✓ 연결어: 자연스럽게 사용되었는가?
+
+글자 수가 ${limitMin}자 미만이면 내용 추가, ${limitMax}자 초과하면 축약하여 반드시 범위 내로 맞출 것!
   `;
 
   parts.push({ text: promptText });
@@ -218,10 +219,11 @@ export const generateStudentReport = async (params: GenerationParams, apiKey: st
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            gradeVersion: { type: Type.STRING, description: `${limitMin}~${limitMax}byte 범위(한글 3byte, 그 외 1byte)를 절대 준수한 텍스트. ${limitMax}byte 초과 시 연결어('이는', '특히', '이를 통해', '나아가' 등)를 활용하여 문맥을 자연스럽게 유지하며 범위 내로 조절할 것. 단순 나열식 문장 연결 금지. (학생 이름, 성취기준 번호, 섹션 헤더, 괄호, 불필요한 따옴표 절대 미포함)` },
+            gradeVersion: { type: Type.STRING, description: `${limitMin}~${limitMax}자 (공백 포함) 분량의 텍스트. 짧은 문장을 피하고 2-3개 절을 연결하여 길게 작성. 모든 문장은 '-함', '-보임', '-임'으로만 끝내고 '-합니다', '-입니다' 사용 금지. 문장 간 연결어('이 과정에서', '나아가', '이를 통해' 등) 사용하여 자연스러운 흐름 유지.` },
           },
           required: ["gradeVersion"],
-        }
+        },
+        temperature: 0.3
       },
       contents: [
         {
@@ -259,12 +261,54 @@ export const checkSpelling = async (text: string, apiKey: string): Promise<strin
       {
         role: 'user',
         parts: [{
-          text: `다음 텍스트의 맞춤법과 띄어쓰기를 교정해줘. 
-        단, 다음 규칙을 엄수해줘:
-        1. 학생 이름, '위 학생은', '해당 학생은' 등의 지칭 대명사 삭제.
-        2. '[12정00-00]' 같은 성취기준 번호 삭제.
-        3. '탐구 동기', '탐구 과정' 등의 섹션 헤더 삭제.
-        문맥과 전문 용어는 유지하고, 오타나 문법적 오류만 수정해서 결과 텍스트만 출력해:\n\n${text}`
+          text: `다음 텍스트의 맞춤법과 띄어쓰기를 교정. 학생 지칭, 성취기준 번호, 섹션 헤더는 삭제. 문맥과 전문 용어는 유지하고 오타만 수정:\n\n${text}`
+        }]
+      }
+    ]
+  });
+
+  return response.text || text;
+};
+
+export const summarizeText = async (text: string, targetLength: number, apiKey: string): Promise<string> => {
+  if (!apiKey) throw new Error("API 키가 필요합니다.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    config: {
+      responseMimeType: 'text/plain',
+      temperature: 0.3,
+    },
+    contents: [
+      {
+        role: 'user',
+        parts: [{
+          text: `다음 텍스트를 ${targetLength}자 (공백 포함) 이하로 자연스럽게 축약해줘.
+
+[절대 금지 사항]
+1. 학생 지칭 금지: '위 학생은', '해당 학생은', '학습자는', '학생은' 등 절대 미포함. 주어 생략하고 서술어로 시작.
+2. 성취기준 번호 금지: [12정01-01] 같은 코드 절대 미포함.
+3. 괄호 사용 금지: 날짜 표기 외 괄호 사용 금지.
+4. 따옴표 최소화: 교과명, 프로젝트명만 사용.
+5. 종결어미 제한: 반드시 '-함', '-보임', '-임'으로만 끝내야 함. '-합니다', '-입니다' 절대 금지.
+6. 섹션 헤더 금지: '탐구 동기', '탐구 과정' 등 미포함.
+
+[축약 규칙]
+1. 글자 수: 반드시 ${targetLength}자 (공백 포함) 이하로 축약
+2. 핵심 내용 유지: 탐구 주제, 방법, 결과, 평가는 반드시 포함
+3. 결론 부분 보존: 평가 및 의미 부여는 꼭 유지
+4. 문장 길이: 짧은 문장 금지. 2-3개 절을 연결하여 길게 작성.
+   - 나쁜 예: "~보여줌. ~보임." (짧고 단절적)
+   - 좋은 예: "~보여줌과 동시에 ~엿볼 수 있었음." (길고 자연스러움)
+5. 연결 표현 필수: '~과 동시에', '~한편', '~뿐만 아니라', '~더불어', '~나아가'
+6. 문장 간 연결어: '이 과정에서', '따라서', '나아가', '이는', '특히', '이를 통해', '이를 바탕으로'
+
+[원본 텍스트]
+${text}
+
+위 규칙을 모두 준수하여 ${targetLength}자 이하로 축약한 결과만 출력:`
         }]
       }
     ]
