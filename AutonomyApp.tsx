@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, AlertCircle, Loader2, Key, Info, ChevronDown, Sparkles } from 'lucide-react';
+import { ArrowRight, AlertCircle, Loader2, Key, Info, ChevronDown, Sparkles, Trash2 } from 'lucide-react';
 import FileUpload from './components/FileUpload';
 import OutputDisplay from './components/OutputDisplay';
 import ApiKeyInput from './components/ApiKeyInput';
@@ -394,17 +394,32 @@ const AutonomyApp: React.FC = () => {
 
                         {/* Advanced Settings: Custom Instructions */}
                         <div className="mb-6">
-                            <button
-                                onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-                                className="flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors mb-3 group"
-                            >
-                                <Sparkles size={16} className="text-purple-500 group-hover:text-purple-600" />
-                                <span>AI 작성 지시사항 (고급)</span>
-                                <ChevronDown 
-                                    size={16} 
-                                    className={`transition-transform duration-200 ${isAdvancedOpen ? 'rotate-180' : ''}`}
-                                />
-                            </button>
+                            <div className="flex items-center justify-between mb-3">
+                                <button
+                                    onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                                    className="flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors group"
+                                >
+                                    <Sparkles size={16} className="text-purple-500 group-hover:text-purple-600" />
+                                    <span>AI 작성 지시사항 (고급)</span>
+                                    <ChevronDown 
+                                        size={16} 
+                                        className={`transition-transform duration-200 ${isAdvancedOpen ? 'rotate-180' : ''}`}
+                                    />
+                                </button>
+                                {customInstructions && (
+                                    <button
+                                        onClick={() => {
+                                            setCustomInstructions('');
+                                            localStorage.removeItem('autonomy_custom_instructions');
+                                        }}
+                                        className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-colors"
+                                        title="지시사항 초기화"
+                                    >
+                                        <Trash2 size={14} />
+                                        <span>초기화</span>
+                                    </button>
+                                )}
+                            </div>
                             
                             {isAdvancedOpen && (
                                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 animate-fade-in">
