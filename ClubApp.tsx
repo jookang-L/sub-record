@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, AlertCircle, Loader2, Key, Info } from 'lucide-react';
+import { ArrowRight, AlertCircle, Loader2, Key, Info, ChevronDown, Sparkles } from 'lucide-react';
 import FileUpload from './components/FileUpload';
 import OutputDisplay from './components/OutputDisplay';
 import ApiKeyInput from './components/ApiKeyInput';
@@ -20,6 +20,10 @@ const ClubApp: React.FC = () => {
   // Knowledge Base State
   const [knowledgeBaseFiles, setKnowledgeBaseFiles] = useState<UploadedFile[]>([]);
   const [customSubjectName, setCustomSubjectName] = useState<string | null>(null);
+
+  // Custom Instructions State
+  const [customInstructions, setCustomInstructions] = useState<string>('');
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [result, setResult] = useState<GeneratedResult | null>(null);
@@ -54,6 +58,7 @@ const ClubApp: React.FC = () => {
 
     const storedKbFiles = localStorage.getItem('club_knowledge_base_files');
     const storedSubjectName = localStorage.getItem('club_custom_subject_name');
+    const storedInstructions = localStorage.getItem('club_custom_instructions');
 
     if (storedKbFiles) {
       try {
@@ -81,6 +86,10 @@ const ClubApp: React.FC = () => {
 
     if (storedSubjectName) {
       setCustomSubjectName(storedSubjectName);
+    }
+
+    if (storedInstructions) {
+      setCustomInstructions(storedInstructions);
     }
   }, []);
 
@@ -134,6 +143,7 @@ const ClubApp: React.FC = () => {
           mimeType: f.type
         })) : undefined,
         customSubjectName: customSubjectName || undefined,
+        customInstructions: customInstructions || undefined,
         recordType: RecordType.CLUB
       }, apiKey);
       setResult(generatedData);
@@ -324,12 +334,42 @@ const ClubApp: React.FC = () => {
               />
             </div>
 
+            {/* Advanced Settings: Custom Instructions */}
+            <div className="mb-6">
+              <button
+                onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+                className="flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-blue-600 transition-colors mb-3 group"
+              >
+                <Sparkles size={16} className="text-purple-500 group-hover:text-purple-600" />
+                <span>AI 작성 지시사항 (고급)</span>
+                <ChevronDown 
+                  size={16} 
+                  className={`transition-transform duration-200 ${isAdvancedOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              
+              {isAdvancedOpen && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 animate-fade-in">
+                  <textarea
+                    className="w-full h-24 p-3 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none shadow-sm transition-shadow placeholder-slate-400 bg-white"
+                    placeholder="예시:&#10;- 협업 능력을 강조해주세요&#10;- 창의성을 부각해주세요&#10;- 동아리 내 역할을 명확히 해주세요"
+                    value={customInstructions}
+                    onChange={(e) => {
+                      setCustomInstructions(e.target.value);
+                      localStorage.setItem('club_custom_instructions', e.target.value);
+                    }}
+                  />
+                  <p className="text-xs text-purple-600 mt-2">💡 AI가 세특을 작성할 때 참고할 특별한 요청사항을 입력하세요.</p>
+                </div>
+              )}
+            </div>
+
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-2">
                 <label className="block text-sm font-bold text-slate-700">목표 등급 설정</label>
                 <div className="relative group">
                   <Info size={16} className="text-slate-400 hover:text-blue-500 cursor-help transition-colors" />
-                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-slate-800 text-white text-xs px-3 py-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg z-50 w-64">
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-slate-800 text-white text-xs px-3 py-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-50 w-72">
                     ⚠️ Gemini의 한계로 글자 수가 초과될 수 있습니다.<br />
                     초과 시 우측 하단의 <span className="font-bold text-orange-300">'축약'</span> 버튼을 눌러주세요.
                     <div className="absolute top-1/2 left-[-4px] -translate-y-1/2 border-y-[4px] border-y-transparent border-r-[4px] border-r-slate-800"></div>

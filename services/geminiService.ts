@@ -171,6 +171,7 @@ ${STUDENT_RECORD_EXAMPLES}
 - 희망 등급: ${params.gradeLevel} (${volumeDesc})
 ${params.customSubjectName ? `- 활동 분야/교과명: ${params.customSubjectName}` : ''}
 - 1차 초안 및 메모: ${params.draftText || "(없음. 보고서와 코드를 바탕으로 작성)"}
+${params.customInstructions ? `\n[★★사용자 특별 지시사항★★]\n${params.customInstructions}\n위 지시사항을 반드시 반영하여 작성할 것!` : ''}
 
 [목표 분량 - 절대 필수]
 전체 텍스트는 반드시 정확히 ${limitMin}~${limitMax}자 (공백 포함)로 작성해야 함.

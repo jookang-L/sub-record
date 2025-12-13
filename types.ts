@@ -35,6 +35,7 @@ export interface GenerationParams {
     mimeType: string;
   }[];
   customSubjectName?: string;
+  customInstructions?: string;
   recordType?: RecordType;
 }
 
